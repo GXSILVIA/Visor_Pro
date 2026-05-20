@@ -141,7 +141,7 @@ if st.session_state.get("authentication_status"):
                 df_c = st.session_state.dict_hojas[nh_all[st.session_state.idx_hoja]]
                 m.fit_bounds([[df_c['LAT'].min(), df_c['LON'].min()], [df_c['LAT'].max(), df_c['LON'].max()]])
             
-            elif modo == "Polígonos CP" and gdf_pol is not None:
+        elif modo == "Polígonos CP" and gdf_pol is not None:
                 df_p = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)].set_index('CP')
                 for _, r in gdf_pol.iterrows():
                     cp_g = str(r[col_cp_geo]).zfill(5)
@@ -167,7 +167,7 @@ if st.session_state.get("authentication_status"):
                             folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).add_to(m)
                 m.fit_bounds(b_pol)
 
-            else: # Coordenadas
+           else: # Coordenadas
                 df_v = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)]
                 pts = df_v.to_dict('records')
                 for i, p1 in enumerate(pts):
