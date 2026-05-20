@@ -328,7 +328,6 @@ if st.session_state.get("authentication_status"):
                             ws.write(rb+1, col, count, f_val); ws.write(rb+2, col, int(pvol), f_val)
                         ws.write(23, col, len(df_m), f_val); ws.write(24, col, int(df_m['VOL'].mean()), f_footer)
                         col += 1
-
                     # TENDENCIA (Sparklines) - ÍNDICES MANUALES CARGADOS
                     lc = xlsxwriter.utility.xl_col_to_name(col-1)
                     ws.write(4, col, "TENDENCIA", f_hdr)
@@ -368,7 +367,6 @@ if st.session_state.get("authentication_status"):
                                 dv, dt = int(r['VOL']-df_p[zl]['VOL']), round(r['Traslape']-df_p[zl]['Traslape'], 1)
                                 ws_det.write(re, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#00B050' if dv>0 else '#FF0000' if dv<0 else '#000','bold':True,'align':'right'}))
                                 ws_det.write(re, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#FF0000' if dt>0 else '#00B050' if dt<0 else '#000','bold':True,'align':'right'}))
-
                             else:
                                 ws_det.write(re, 2, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
                                 ws_det.write(re, 4, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
