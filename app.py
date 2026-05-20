@@ -200,7 +200,7 @@ if st.session_state.get("authentication_status"):
                 if not df_v.empty: 
                     m.fit_bounds([[df_v['LAT'].min(), df_v['LON'].min()], [df_v['LAT'].max(), df_v['LON'].max()]])
 
-            map_html = m.get_root().render(); components.html(map_html, height=450)
+        map_html = m.get_root().render(); components.html(map_html, height=450)
 
             # --- CÁLCULOS SIEMPRE DISPONIBLES PARA EXCEL Y DASHBOARD ---
         if modo == "Crecimiento":
@@ -298,7 +298,7 @@ if st.session_state.get("authentication_status"):
                 f_r = wb.add_format({'bg_color': '#FF0000', 'font_color': 'white', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
                 f_footer = wb.add_format({'bg_color': '#DDEBF7', 'bold': True, 'border': 1, 'align': 'center'})
 
-                if modo == "Crecimiento" and st.session_state.historico_resumen:
+        if modo == "Crecimiento" and st.session_state.historico_resumen:
                     ws = wb.add_worksheet("RESUMEN")
                     ws.hide_gridlines(2)
                     ws.set_column('A:A', 28, f_white); ws.set_column('B:Z', 15, f_white)
@@ -368,10 +368,10 @@ if st.session_state.get("authentication_status"):
                                 dv, dt = int(r['VOL']-df_p[zl]['VOL']), round(r['Traslape']-df_p[zl]['Traslape'], 1)
                                 ws_det.write(re, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#00B050' if dv>0 else '#FF0000' if dv<0 else '#000','bold':True,'align':'right'}))
                                 ws_det.write(re, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#FF0000' if dt>0 else '#00B050' if dt<0 else '#000','bold':True,'align':'right'}))
-                            else:
+        else:
                                 ws_det.write(re, 2, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
                                 ws_det.write(re, 4, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
                             ws_det.write(re, 3, r['Traslape']/100, f_v if r['Traslape']<=25 else f_a if r['Traslape']<=50 else f_n if r['Traslape']<=75 else f_r)
-                else: pd.DataFrame(rep_coords).to_excel(wr, sheet_name="Reporte", index=False)
+        else: pd.DataFrame(rep_coords).to_excel(wr, sheet_name="Reporte", index=False)
             
             c_d2.download_button("📊 DESCARGAR REPORTE", buf.getvalue(), nombre_xlsx, use_container_width=True)
