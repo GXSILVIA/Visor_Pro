@@ -170,7 +170,7 @@ if st.session_state.get("authentication_status"):
                             folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).add_to(m)
                 m.fit_bounds(b_pol)
 
-            else: # Coordenadas
+           else: # Coordenadas
                 df_v = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)]
                 pts = df_v.to_dict('records')
                 for i, p1 in enumerate(pts):
@@ -178,26 +178,27 @@ if st.session_state.get("authentication_status"):
                     tr_r = round(calcular_traslape_real(p1, otros), 1)
                     vol_p = int(p1['VOL'])
                     
-                    # --- LÓGICA DE ANÁLISIS CORREGIDA ---
                     if (25 <= vol_p <= 35) or (tr_r < 50):
                         st_v = "🟢 Sano"
                     elif (tr_r >= 50) and (vol_p < 25):
                         st_v = "🔴 Crítico"
                     else:
-                        st_v = "🟡 Atención" # Para volúmenes > 35 con traslape > 50%
+                        st_v = "🟡 Atención"
                     
                     ints = [round((area_interseccion(p1['RAD'], p2['RAD'], np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139)/(np.pi*p1['RAD']**2))*100,1) for p2 in otros if np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139 < (p1['RAD']+p2['RAD'])]
-
-                    if 21 <= vol_p <= 30:
-                        color_circulo = "#FFB6C1"
-                    elif 31 <= vol_p <= 40:
-                        color_circulo = "#FF0000"
-                    elif vol_p > 40:
-                        color_circulo = "#800020"
-                    else:
-                        color_circulo = clrs[p1['R_ID']]
                     
-                    # --- AQUÍ SE DEFINE LA VARIABLE ANTES DE USARLA ---
+                    # --- FILTRADO DE COLOR DIRECTO Y SEGURO ---
+                    if vol_p == 0:
+                        color_circulo = "#FFFFFF"  # Blanco
+                    elif 1 <= vol_p <= 20:
+                        color_circulo = "#FFFF00"  # Amarillo
+                    elif 21 <= vol_p <= 30:
+                        color_circulo = "#FFA500"  # Naranja
+                    elif 31 <= vol_p <= 40:
+                        color_circulo = "#FF0000"  # Rojo
+                    else:
+                        color_circulo = "#800020"  # Guinda (41 o más)
+                    
                     texto_tooltip = f"Nombre: {p1['NOM']}<br>Volumen: {vol_p}<br>Traslape: {tr_r}%"
                     
                     folium.Circle(
@@ -208,8 +209,7 @@ if st.session_state.get("authentication_status"):
                         fill_opacity=0.3, 
                         tooltip=texto_tooltip
                     ).add_to(m)
-
-                  				
+                    
                     if ver_n: 
                         folium.Marker([p1['LAT'], p1['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
                     
@@ -220,6 +220,7 @@ if st.session_state.get("authentication_status"):
                         "TRANSLAPE REAL": f"{tr_r}%", 
                         "TRANSLAPE ACUMULADO": f"{round(sum(ints),1)}%"
                     })
+
                 
                 if not df_v.empty: 
                     m.fit_bounds([[df_v['LAT'].min(), df_v['LON'].min()], [df_v['LAT'].max(), df_v['LON'].max()]])
