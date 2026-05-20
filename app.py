@@ -373,7 +373,9 @@ if st.session_state.get("authentication_status"):
                             
                             ws_det.write(re, 3, r['Traslape']/100, f_v if r['Traslape']<=25 else f_a if r['Traslape']<=50 else f_n if r['Traslape']<=75 else f_r)
                 
+        
                 else: 
-                    pd.DataFrame(rep_coords).to_excel(wr, sheet_name="Reporte", index=False)
+                     pd.DataFrame(rep_coords).to_excel(wr, sheet_name="Reporte", index=False)
             
             c_d2.download_button("📊 DESCARGAR REPORTE", buf.getvalue(), nombre_xlsx, use_container_width=True)
+
