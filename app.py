@@ -116,22 +116,19 @@ if st.session_state.get("authentication_status"):
             if c2.button("Sig. ➡️") and st.session_state.idx_hoja < len(nh)-1: st.session_state.idx_hoja += 1
 
         st.write("---")
-        labs = ["⚪ R0", "🟡 R1-100", "🟠 R101-200", "🌸 R201-300", "🔴 R301-400", "🍷 R401+"] if "Polígonos" in modo else ["⚪ R0", "🟡 R1-20", "🟠 21-30", "🔴 R31-40", "🍷 R41+"]
+        labs = ["⚪ R0", "🟡 R1-100", "🟠 R101-200", "🔴 R201-300", "🏮 R301-400", "🍷 R401+"] if "Polígonos" in modo else ["⚪ R0", "🟡 R1-15", "🟠 R16-20", "🔴 R21-30", "🏮 R31-40", "🍷 R41+"]
         acts = [i for i, l in enumerate(labs) if st.checkbox(l, value=True, key=f"r{i}_{modo}")]
         ver_n = st.toggle("🏷️ Ver Nombres Fijos", key="persist_nombres")
         m_ana = st.toggle("🔍 Tabla de Análisis", key="persist_analisis")
 
     with col_m:
         hay_d = (modo == "Crecimiento" and st.session_state.dict_hojas) or (modo != "Crecimiento" and st.session_state.df_datos is not None)
-        if not hay_d:
-            st.info("👋 Por favor, procesa un archivo para visualizar.")
+        if not hay_d: st.info("👋 Por favor, procesa un archivo para visualizar.")
         else:
             m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB Voyager")
-            clrs = {0:"#FFFFFF", 1:"#FFFF00", 2:"#FFA500", 3:"#FF0000", 4:"#800020", 5:"#800020"}
-            rep_coords = []
+            clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#F00", 4:"#FF4500", 5:"#800000"}; rep_coords = []
 
-
-            if modo == "Crecimiento":
+           if modo == "Crecimiento":
                 nh_all = list(st.session_state.dict_hojas.keys())
                 for i_fg, nom_fg in enumerate(nh_all):
                     fg = folium.FeatureGroup(name=nom_fg, show=(i_fg == st.session_state.idx_hoja))
@@ -178,37 +175,16 @@ if st.session_state.get("authentication_status"):
                     tr_r = round(calcular_traslape_real(p1, otros), 1)
                     vol_p = int(p1['VOL'])
                     
+                    # --- LÓGICA DE ANÁLISIS CORREGIDA ---
                     if (25 <= vol_p <= 35) or (tr_r < 50):
                         st_v = "🟢 Sano"
                     elif (tr_r >= 50) and (vol_p < 25):
                         st_v = "🔴 Crítico"
                     else:
-                        st_v = "🟡 Atención"
+                        st_v = "🟡 Atención" # Para volúmenes > 35 con traslape > 50%
                     
                     ints = [round((area_interseccion(p1['RAD'], p2['RAD'], np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139)/(np.pi*p1['RAD']**2))*100,1) for p2 in otros if np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139 < (p1['RAD']+p2['RAD'])]
-                    
-                    # --- FILTRADO DE COLOR DIRECTO Y SEGURO ---
-                    if vol_p == 0:
-                        color_circulo = "#FFFFFF"  # Blanco
-                    elif 1 <= vol_p <= 20:
-                        color_circulo = "#FFFF00"  # Amarillo
-                    elif 21 <= vol_p <= 30:
-                        color_circulo = "#FFA500"  # Naranja
-                    elif 31 <= vol_p <= 40:
-                        color_circulo = "#FF0000"  # Rojo
-                    else:
-                        color_circulo = "#800020"  # Guinda (41 o más)
-                    
-                    texto_tooltip = f"Nombre: {p1['NOM']}<br>Volumen: {vol_p}<br>Traslape: {tr_r}%"
-                    
-                    folium.Circle(
-                        [p1['LAT'], p1['LON']], 
-                        radius=p1['RAD'], 
-                        color=color_circulo, 
-                        fill=True, 
-                        fill_opacity=0.3, 
-                        tooltip=texto_tooltip
-                    ).add_to(m)
+                    folium.Circle([p1['LAT'], p1['LON']], radius=p1['RAD'], color=clrs[p1['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"{p1['NOM']}: {tr_r}%").add_to(m)
                     
                     if ver_n: 
                         folium.Marker([p1['LAT'], p1['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
@@ -220,7 +196,6 @@ if st.session_state.get("authentication_status"):
                         "TRANSLAPE REAL": f"{tr_r}%", 
                         "TRANSLAPE ACUMULADO": f"{round(sum(ints),1)}%"
                     })
-
                 
                 if not df_v.empty: 
                     m.fit_bounds([[df_v['LAT'].min(), df_v['LON'].min()], [df_v['LAT'].max(), df_v['LON'].max()]])
@@ -271,7 +246,9 @@ if st.session_state.get("authentication_status"):
 
                     st.markdown(f"""
                         <div style="display: flex; justify-content: space-around; background: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #444; text-align: center;">
-                            <div><p style="color: #bbb; margin:0;">📊 Traslape Total</p><h2 style="margin:0;">{round(p_act,1)}%</h2>{delta_html}</div>
+                           
+                    
+        <div><p style="color: #bbb; margin:0;">📊 Traslape Total</p><h2 style="margin:0;">{round(p_act,1)}%</h2>{delta_html}</div>
                             <div style="border-left: 1px solid #444; padding-left: 20px;"><p style="color: #28a745; font-weight: bold; margin:0;">🟢 Bajo</p><h2 style="margin:0; color: #28a745;">{round(b/t_e*100,1)}%</h2><p style="color:#28a745; margin:0;">{b} VRs</p></div>
                             <div><p style="color: #ffc107; font-weight: bold; margin:0;">🟡 Medio</p><h2 style="margin:0; color: #ffc107;">{round(m_v/t_e*100,1)}%</h2><p style="color:#ffc107; margin:0;">{m_v} VRs</p></div>
                             <div><p style="color: #fd7e14; font-weight: bold; margin:0;">🟠 Alto</p><h2 style="margin:0; color: #fd7e14;">{round(a/t_e*100,1)}%</h2><p style="color:#fd7e14; margin:0;">{a} VRs</p></div>
