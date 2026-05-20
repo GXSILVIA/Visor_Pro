@@ -167,7 +167,7 @@ if st.session_state.get("authentication_status"):
                             folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).add_to(m)
                 m.fit_bounds(b_pol)
 
-           else: # Coordenadas
+        else: # Coordenadas
                 df_v = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)]
                 pts = df_v.to_dict('records')
                 for i, p1 in enumerate(pts):
@@ -203,7 +203,7 @@ if st.session_state.get("authentication_status"):
             map_html = m.get_root().render(); components.html(map_html, height=450)
 
             # --- CÁLCULOS SIEMPRE DISPONIBLES PARA EXCEL Y DASHBOARD ---
-            if modo == "Crecimiento":
+        if modo == "Crecimiento":
                 hoja_act = nh_all[st.session_state.idx_hoja]
                 df_ex = pd.DataFrame(st.session_state.analisis_cache[hoja_act])
                 t_e = len(df_ex) or 1
@@ -213,7 +213,7 @@ if st.session_state.get("authentication_status"):
                 c = len(df_ex[df_ex['Traslape'] > 75])
 
             # --- CÁLCULOS PREVIOS (SIEMPRE DISPONIBLES) ---
-            if modo == "Crecimiento":
+        if modo == "Crecimiento":
                 idx_actual = st.session_state.idx_hoja
                 hoja_act = nh_all[idx_actual]
                 df_ex = pd.DataFrame(st.session_state.analisis_cache[hoja_act])
@@ -224,7 +224,7 @@ if st.session_state.get("authentication_status"):
                 c = len(df_ex[df_ex['Traslape'] > 75])
                 p_act = st.session_state.historico_resumen[idx_actual]['Prom']
 
-            if m_ana:
+        if m_ana:
                 st.write("---")
                 if modo == "Crecimiento":
                     # --- TÍTULO Y DASHBOARD ---
