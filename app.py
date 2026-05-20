@@ -127,7 +127,7 @@ if st.session_state.get("authentication_status"):
             st.info("👋 Por favor, procesa un archivo para visualizar.")
         else:
             m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB Voyager")
-            clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#FFB6C1", 4:"#FF0000", 5:"#800020"}
+            clrs = {0:"#FFFFFF", 1:"#FFFF00", 2:"#FFA500", 3:"#FF0000", 4:"#800020", 5:"#800020"}
             rep_coords = []
 
 
