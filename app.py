@@ -185,7 +185,18 @@ if st.session_state.get("authentication_status"):
                     
                     ints = [round((area_interseccion(p1['RAD'], p2['RAD'], np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139)/(np.pi*p1['RAD']**2))*100,1) for p2 in otros if np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139 < (p1['RAD']+p2['RAD'])]
 
-	                    texto_tooltip = f"Nombre: {p1['NOM']} | Volumen: {vol_p} | Traslape: {tr_r}%"
+	                                       ints = [round((area_interseccion(p1['RAD'], p2['RAD'], np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139)/(np.pi*p1['RAD']**2))*100,1) for p2 in otros if np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139 < (p1['RAD']+p2['RAD'])]
+                    
+                    if 21 <= vol_p <= 30:
+                        color_circulo = "#FFB6C1"
+                    elif 31 <= vol_p <= 40:
+                        color_circulo = "#FF0000"
+                    elif vol_p > 40:
+                        color_circulo = "#800020"
+                    else:
+                        color_circulo = clrs[p1['R_ID']]
+                    
+                    texto_tooltip = f"Nombre: {p1['NOM']} | Volumen: {vol_p} | Traslape: {tr_r}%"
                     
                     folium.Circle(
                         [p1['LAT'], p1['LON']], 
@@ -195,7 +206,7 @@ if st.session_state.get("authentication_status"):
                         fill_opacity=0.3, 
                         tooltip=texto_tooltip
                     ).add_to(m)
-                   				
+                  				
                     if ver_n: 
                         folium.Marker([p1['LAT'], p1['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
                     
