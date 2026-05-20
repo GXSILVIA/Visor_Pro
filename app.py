@@ -197,9 +197,8 @@ if st.session_state.get("authentication_status"):
                     else:
                         color_circulo = clrs[p1['R_ID']]
                     
-                    texto_tooltip = f"Nombre: {p1['NOM']} 
-			              Volumen: {vol_p}  
-				      Traslape: {tr_r}%"
+                        texto_tooltip = f"Nombre: {p1['NOM']}<br>Volumen: {vol_p}<br>Traslape: {tr_r}%"
+
                     
                     folium.Circle(
                         [p1['LAT'], p1['LON']], 
