@@ -121,11 +121,12 @@ if st.session_state.get("authentication_status"):
         ver_n = st.toggle("🏷️ Ver Nombres Fijos", key="persist_nombres")
         m_ana = st.toggle("🔍 Tabla de Análisis", key="persist_analisis")
 
-    with col_m:
+       with col_m:
         hay_d = (modo == "Crecimiento" and st.session_state.dict_hojas) or (modo != "Crecimiento" and st.session_state.df_datos is not None)
-        if not hay_d: st.info("👋 Por favor, procesa un archivo para visualizar.")
+        if not hay_d:
+            st.info("👋 Por favor, procesa un archivo para visualizar.")
         else:
-                        m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB Voyager")
+            m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB Voyager")
             clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#FFB6C1", 4:"#FF0000", 5:"#800020"}
             rep_coords = []
 
