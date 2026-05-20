@@ -128,7 +128,7 @@ if st.session_state.get("authentication_status"):
             m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB Voyager")
             clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#F00", 4:"#FF4500", 5:"#800000"}; rep_coords = []
 
-             if modo == "Crecimiento":
+        if modo == "Crecimiento":
                 nh_all = list(st.session_state.dict_hojas.keys())
                 for i_fg, nom_fg in enumerate(nh_all):
                     fg = folium.FeatureGroup(name=nom_fg, show=(i_fg == st.session_state.idx_hoja))
