@@ -129,251 +129,249 @@ if st.session_state.get("authentication_status"):
             clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#F00", 4:"#FF4500", 5:"#800000"}; rep_coords = []
 
         if modo == "Crecimiento":
-                nh_all = list(st.session_state.dict_hojas.keys())
-                for i_fg, nom_fg in enumerate(nh_all):
-                    fg = folium.FeatureGroup(name=nom_fg, show=(i_fg == st.session_state.idx_hoja))
-                    data_fg = [r for r in st.session_state.analisis_cache[nom_fg] if r['R_ID'] in acts]
-                    for p in data_fg:
-                        folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"{p['Zona']}: {p['Traslape']}%").add_to(fg)
-                        if ver_n: folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p["Zona"]}</div>')).add_to(fg)
-                    fg.add_to(m)
-                folium.LayerControl(position='topright', collapsed=False).add_to(m)
-                df_c = st.session_state.dict_hojas[nh_all[st.session_state.idx_hoja]]
-                m.fit_bounds([[df_c['LAT'].min(), df_c['LON'].min()], [df_c['LAT'].max(), df_c['LON'].max()]])
+            nh_all = list(st.session_state.dict_hojas.keys())
+            for i_fg, nom_fg in enumerate(nh_all):
+                fg = folium.FeatureGroup(name=nom_fg, show=(i_fg == st.session_state.idx_hoja))
+                data_fg = [r for r in st.session_state.analisis_cache[nom_fg] if r['R_ID'] in acts]
+                for p in data_fg:
+                    folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"{p['Zona']}: {p['Traslape']}%").add_to(fg)
+                    if ver_n: folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p["Zona"]}</div>')).add_to(fg)
+                fg.add_to(m)
+            folium.LayerControl(position='topright', collapsed=False).add_to(m)
+            df_c = st.session_state.dict_hojas[nh_all[st.session_state.idx_hoja]]
+            m.fit_bounds([[df_c['LAT'].min(), df_c['LON'].min()], [df_c['LAT'].max(), df_c['LON'].max()]])
             
         elif modo == "Polígonos CP" and gdf_pol is not None:
-                df_p = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)].set_index('CP')
-                for _, r in gdf_pol.iterrows():
-                    cp_g = str(r[col_cp_geo]).zfill(5)
-                    if cp_g in df_p.index:
-                        row = df_p.loc[cp_g]
-                        v_p = row['VOL'] if isinstance(row, pd.Series) else row.iloc[0]['VOL']
-                        n_p = row['NOM'] if isinstance(row, pd.Series) else row.iloc[0]['NOM']
-                        
-                        # --- MODIFICACIÓN: SE AGREGA TOOLTIP ---
-                        folium.GeoJson(
-                            r['geometry'], 
-                            style_function=lambda x, v=v_p: {
-                                'fillColor':clrs[obtener_rango_id(v,True)], 
-                                'color':'#000', 
-                                'weight':1, 
-                                'fillOpacity':0.4
-                            },
-                            tooltip=f"Zona: {n_p} | Vol: {int(v_p)}"
-                        ).add_to(m)
-                        
-                        if ver_n:
-                            c = r['geometry'].centroid
-                            folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).add_to(m)
-                m.fit_bounds(b_pol)
+            df_p = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)].set_index('CP')
+            for _, r in gdf_pol.iterrows():
+                cp_g = str(r[col_cp_geo]).zfill(5)
+                if cp_g in df_p.index:
+                    row = df_p.loc[cp_g]
+                    v_p = row['VOL'] if isinstance(row, pd.Series) else row.iloc[0]['VOL']
+                    n_p = row['NOM'] if isinstance(row, pd.Series) else row.iloc[0]['NOM']
+                    
+                    # --- MODIFICACIÓN: SE AGREGA TOOLTIP ---
+                    folium.GeoJson(
+                        r['geometry'], 
+                        style_function=lambda x, v=v_p: {
+                            'fillColor':clrs[obtener_rango_id(v,True)], 
+                            'color':'#000', 
+                            'weight':1, 
+                            'fillOpacity':0.4
+                        },
+                        tooltip=f"Zona: {n_p} | Vol: {int(v_p)}"
+                    ).add_to(m)
+                    
+                    if ver_n:
+                        c = r['geometry'].centroid
+                        folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).add_to(m)
+            m.fit_bounds(b_pol)
 
         else: # Coordenadas
-                df_v = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)]
-                pts = df_v.to_dict('records')
-                for i, p1 in enumerate(pts):
-                    otros = [p for j, p in enumerate(pts) if i != j]
-                    tr_r = round(calcular_traslape_real(p1, otros), 1)
-                    vol_p = int(p1['VOL'])
-                    
-                    # --- LÓGICA DE ANÁLISIS CORREGIDA ---
-                    if (25 <= vol_p <= 35) or (tr_r < 50):
-                        st_v = "🟢 Sano"
-                    elif (tr_r >= 50) and (vol_p < 25):
-                        st_v = "🔴 Crítico"
-                    else:
-                        st_v = "🟡 Atención" # Para volúmenes > 35 con traslape > 50%
-                    
-                    ints = [round((area_interseccion(p1['RAD'], p2['RAD'], np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139)/(np.pi*p1['RAD']**2))*100,1) for p2 in otros if np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139 < (p1['RAD']+p2['RAD'])]
-                    folium.Circle([p1['LAT'], p1['LON']], radius=p1['RAD'], color=clrs[p1['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"{p1['NOM']}: {tr_r}%").add_to(m)
-                    
-                    if ver_n: 
-                        folium.Marker([p1['LAT'], p1['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
-                    
-                    rep_coords.append({
-                        "ST": st_v, 
-                        "ZONA": p1['NOM'], 
-                        "VOLUMEN": vol_p, 
-                        "TRANSLAPE REAL": f"{tr_r}%", 
-                        "TRANSLAPE ACUMULADO": f"{round(sum(ints),1)}%"
-                    })
+            df_v = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)]
+            pts = df_v.to_dict('records')
+            for i, p1 in enumerate(pts):
+                otros = [p for j, p in enumerate(pts) if i != j]
+                tr_r = round(calcular_traslape_real(p1, otros), 1)
+                vol_p = int(p1['VOL'])
                 
-                if not df_v.empty: 
-                    m.fit_bounds([[df_v['LAT'].min(), df_v['LON'].min()], [df_v['LAT'].max(), df_v['LON'].max()]])
+                # --- LÓGICA DE ANÁLISIS CORREGIDA ---
+                if (25 <= vol_p <= 35) or (tr_r < 50):
+                    st_v = "🟢 Sano"
+                elif (tr_r >= 50) and (vol_p < 25):
+                    st_v = "🔴 Crítico"
+                else:
+                    st_v = "🟡 Atención" # Para volúmenes > 35 con traslape > 50%
+                
+                ints = [round((area_interseccion(p1['RAD'], p2['RAD'], np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139)/(np.pi*p1['RAD']**2))*100, 1) for p2 in otros]
+                folium.Circle([p1['LAT'], p1['LON']], radius=p1['RAD'], color=clrs[p1['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"{p1['NOM']}: {tr_r}%").add_to(m)
+                
+                if ver_n: 
+                    folium.Marker([p1['LAT'], p1['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
+                
+                rep_coords.append({
+                    "ST": st_v, 
+                    "ZONA": p1['NOM'], 
+                    "VOLUMEN": vol_p, 
+                    "TRANSLAPE REAL": f"{tr_r}%", 
+                    "TRANSLAPE ACUMULADO": f"{round(sum(ints),1)}%"
+                })
+            
+            if not df_v.empty: 
+                m.fit_bounds([[df_v['LAT'].min(), df_v['LON'].min()], [df_v['LAT'].max(), df_v['LON'].max()]])
 
         map_html = m.get_root().render(); components.html(map_html, height=450)
 
-            # --- CÁLCULOS SIEMPRE DISPONIBLES PARA EXCEL Y DASHBOARD ---
+        # --- CÁLCULOS SIEMPRE DISPONIBLES PARA EXCEL Y DASHBOARD ---
         if modo == "Crecimiento":
-                hoja_act = nh_all[st.session_state.idx_hoja]
-                df_ex = pd.DataFrame(st.session_state.analisis_cache[hoja_act])
-                t_e = len(df_ex) or 1
-                b = len(df_ex[df_ex['Traslape'] <= 25])
-                m_v = len(df_ex[(df_ex['Traslape'] > 25) & (df_ex['Traslape'] <= 50)])
-                a = len(df_ex[(df_ex['Traslape'] > 50) & (df_ex['Traslape'] <= 75)])
-                c = len(df_ex[df_ex['Traslape'] > 75])
+            hoja_act = nh_all[st.session_state.idx_hoja]
+            df_ex = pd.DataFrame(st.session_state.analisis_cache[hoja_act])
+            t_e = len(df_ex) or 1
+            b = len(df_ex[df_ex['Traslape'] <= 25])
+            m_v = len(df_ex[(df_ex['Traslape'] > 25) & (df_ex['Traslape'] <= 50)])
+            a = len(df_ex[(df_ex['Traslape'] > 50) & (df_ex['Traslape'] <= 75)])
+            c = len(df_ex[df_ex['Traslape'] > 75])
 
-            # --- CÁLCULOS PREVIOS (SIEMPRE DISPONIBLES) ---
+        # --- CÁLCULOS PREVIOS (SIEMPRE DISPONIBLES) ---
         if modo == "Crecimiento":
-                idx_actual = st.session_state.idx_hoja
-                hoja_act = nh_all[idx_actual]
-                df_ex = pd.DataFrame(st.session_state.analisis_cache[hoja_act])
-                t_e = len(df_ex) or 1
-                b = len(df_ex[df_ex['Traslape'] <= 25])
-                m_v = len(df_ex[(df_ex['Traslape'] > 25) & (df_ex['Traslape'] <= 50)])
-                a = len(df_ex[(df_ex['Traslape'] > 50) & (df_ex['Traslape'] <= 75)])
-                c = len(df_ex[df_ex['Traslape'] > 75])
-                p_act = st.session_state.historico_resumen[idx_actual]['Prom']
+            idx_actual = st.session_state.idx_hoja
+            hoja_act = nh_all[idx_actual]
+            df_ex = pd.DataFrame(st.session_state.analisis_cache[hoja_act])
+            t_e = len(df_ex) or 1
+            b = len(df_ex[df_ex['Traslape'] <= 25])
+            m_v = len(df_ex[(df_ex['Traslape'] > 25) & (df_ex['Traslape'] <= 50)])
+            a = len(df_ex[(df_ex['Traslape'] > 50) & (df_ex['Traslape'] <= 75)])
+            c = len(df_ex[df_ex['Traslape'] > 75])
+            p_act = st.session_state.historico_resumen[idx_actual]['Prom']
 
         if m_ana:
-                st.write("---")
-                if modo == "Crecimiento":
-                    # --- TÍTULO Y DASHBOARD ---
-                    st.markdown(f"<h2 style='text-align: center;'>{hoja_act} ({t_e} VRs)</h2>", unsafe_allow_html=True)
-                    
-                    df_h = pd.DataFrame(st.session_state.historico_resumen)
-                    base = alt.Chart(df_h).encode(x=alt.X('Mes:O', sort=alt.SortField('idx'), title="Meses"))
-                    barras = base.mark_bar(color='#1f77b4', opacity=0.4).encode(y=alt.Y('Zonas:Q', title="Total VRs"))
-                    linea = base.mark_line(color='#FFD700', size=4, point=True).encode(y=alt.Y('Prom:Q', title="Traslape Total (%)"))
-                    etiquetas = linea.mark_text(align='center', baseline='bottom', dy=-12, color='white', fontWeight='bold').encode(text=alt.Text('Prom:Q', format='.1f'))
-                    st.altair_chart(alt.layer(barras, linea, etiquetas).resolve_scale(y='independent').properties(height=300), use_container_width=True)
-
-                    # --- INDICADORES CON DELTA ---
-                    delta_html = ""
-                    if idx_actual > 0:
-                        diff = round(p_act - st.session_state.historico_resumen[idx_actual-1]['Prom'], 1)
-                        color_d, icon_d = ("#dc3545", "▲") if diff > 0 else ("#28a745", "▼")
-                        delta_html = f"<p style='color:{color_d}; font-size:15px; margin:0;'>{icon_d} {abs(diff)}% vs mes ant.</p>"
-
-                    st.markdown(f"""
-                        <div style="display: flex; justify-content: space-around; background: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #444; text-align: center;">
-                           
-                    
-        <div><p style="color: #bbb; margin:0;">📊 Traslape Total</p><h2 style="margin:0;">{round(p_act,1)}%</h2>{delta_html}</div>
-                            <div style="border-left: 1px solid #444; padding-left: 20px;"><p style="color: #28a745; font-weight: bold; margin:0;">🟢 Bajo</p><h2 style="margin:0; color: #28a745;">{round(b/t_e*100,1)}%</h2><p style="color:#28a745; margin:0;">{b} VRs</p></div>
-                            <div><p style="color: #ffc107; font-weight: bold; margin:0;">🟡 Medio</p><h2 style="margin:0; color: #ffc107;">{round(m_v/t_e*100,1)}%</h2><p style="color:#ffc107; margin:0;">{m_v} VRs</p></div>
-                            <div><p style="color: #fd7e14; font-weight: bold; margin:0;">🟠 Alto</p><h2 style="margin:0; color: #fd7e14;">{round(a/t_e*100,1)}%</h2><p style="color:#fd7e14; margin:0;">{a} VRs</p></div>
-                            <div><p style="color: #dc3545; font-weight: bold; margin:0;">🔴 Crítico</p><h2 style="margin:0; color: #dc3545;">{round(c/t_e*100,1)}%</h2><p style="color:#dc3545; margin:0;">{c} VRs</p></div>
-                        </div><br>""", unsafe_allow_html=True)
-                    
-                    st.dataframe(df_ex[["ST", "Zona", "VOL", "Traslape"]].rename(columns={"Zona":"VR", "VOL":"VOLUMEN", "Traslape":"% TR"}), use_container_width=True, hide_index=True)
-                
-                elif modo == "Coordenadas":
-                    st.subheader("📋 Análisis Operativo")
-                    st.dataframe(pd.DataFrame(rep_coords), use_container_width=True, hide_index=True)
-    
-        # --- SECCIÓN DE DESCARGAS: VERSIÓN "SOLO BOTONES" (SIN MAPA DUPLICADO) ---
-        if 'm' in locals():
             st.write("---")
-            
-            # 1. FUNCIÓN DE LIMPIEZA
-            def limpiar_texto_final(t):
-                if not isinstance(t, str): return str(t)
-                import unicodedata
-                t = unicodedata.normalize('NFKD', t).encode('ASCII', 'ignore').decode('ASCII')
-                return t.strip().upper()
-
-            # 2. PREPARACIÓN DE DATOS PARA BOTONES
-            map_data_final = m.get_root().render()
-            from datetime import datetime
-            c_d1, c_d2 = st.columns(2)
-            
-            # Botón para descargar el mapa (No lo visualiza, solo lo descarga)
-            c_d1.download_button("🗺️ Descargar Mapa HTML", map_data_final, f"mapa_{modo.lower()}.html", use_container_width=True)
-
-            nombre_xlsx = f"REPORTE_ESTRATEGICO_{datetime.now().strftime('%d_%m_%Y')}.xlsx"
-            buf = io.BytesIO()
-            
-            with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
-                wb = wr.book
-                # --- FORMATOS RÉPLICA IMAGEN ---
-                f_white = wb.add_format({'bg_color': '#FFFFFF'})
-                f_hdr   = wb.add_format({'bold': True, 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1, 'align': 'center', 'font_size': 9})
-                f_lbl   = wb.add_format({'bold': True, 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1, 'align': 'left', 'font_size': 8})
-                f_perc  = wb.add_format({'bg_color': '#FFFFFF', 'bold': True, 'align': 'center', 'num_format': '0.0%', 'border': 1, 'font_size': 9})
-                f_val   = wb.add_format({'bg_color': '#FFFFFF', 'align': 'center', 'border': 1, 'font_size': 9})
+            if modo == "Crecimiento":
+                # --- TÍTULO Y DASHBOARD ---
+                st.markdown(f"<h2 style='text-align: center;'>{hoja_act} ({t_e} VRs)</h2>", unsafe_allow_html=True)
                 
-                f_v = wb.add_format({'bg_color': '#92D050', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
-                f_a = wb.add_format({'bg_color': '#FFFF00', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
-                f_n = wb.add_format({'bg_color': '#FFC000', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
-                f_r = wb.add_format({'bg_color': '#FF0000', 'font_color': 'white', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
-                f_footer = wb.add_format({'bg_color': '#DDEBF7', 'bold': True, 'border': 1, 'align': 'center'})
+                df_h = pd.DataFrame(st.session_state.historico_resumen)
+                base = alt.Chart(df_h).encode(x=alt.X('Mes:O', sort=alt.SortField('idx'), title="Meses"))
+                barras = base.mark_bar(color='#1f77b4', opacity=0.4).encode(y=alt.Y('Zonas:Q', title="Total VRs"))
+                linea = base.mark_line(color='#FFD700', size=4, point=True).encode(y=alt.Y('Prom:Q', title="Traslape Total (%)"))
+                etiquetas = linea.mark_text(align='center', baseline='bottom', dy=-12, color='white', fontWeight='bold').encode(text=alt.Text('Prom:Q', format='.1f'))
+                st.altair_chart(alt.layer(barras, linea, etiquetas).resolve_scale(y='independent').properties(height=300), use_container_width=True)
 
-        if modo == "Crecimiento" and st.session_state.historico_resumen:
-                    ws = wb.add_worksheet("RESUMEN")
-                    ws.hide_gridlines(2)
-                    ws.set_column('A:A', 28, f_white); ws.set_column('B:Z', 15, f_white)
-                    ws.write('A1', "RESUMEN DE ANALISIS GENERAL", wb.add_format({'bold': True, 'font_size': 14}))
+                # --- INDICADORES CON DELTA ---
+                delta_html = ""
+                if idx_actual > 0:
+                    diff = round(p_act - st.session_state.historico_resumen[idx_actual-1]['Prom'], 1)
+                    color_d, icon_d = ("#dc3545", "▲") if diff > 0 else ("#28a745", "▼")
+                    delta_html = f"<p style='color:{color_d}; font-size:15px; margin:0;'>{icon_d} {abs(diff)}% vs mes ant.</p>"
 
-                    # Estructura Horizontal
-                    ws.write(4, 0, "MES / PERIODO", f_hdr)
-                    ws.write(5, 0, "TRASLAPE TOTAL %", f_lbl)
-                    row_map = [
-                        ("NIVEL BAJO (%)", 7, f_v), ("VR", 8, f_val), ("P. VOL", 9, f_val),
-                        ("NIVEL MEDIO (%)", 11, f_a), ("VR", 12, f_val), ("P. VOL", 13, f_val),
-                        ("NIVEL ALTO (%)", 15, f_n), ("VR", 16, f_val), ("P. VOL", 17, f_val),
-                        ("NIVEL CRÍTICO (%)", 19, f_r), ("VR", 20, f_val), ("P. VOL", 21, f_val),
-                        ("TOTAL VRs", 23, f_lbl), ("CARGA PROM. GLOBAL", 24, f_lbl)
-                    ]
-                    for txt, r, _ in row_map: ws.write(r, 0, txt, f_lbl)
-
-                    col = 1
-                    for h in st.session_state.historico_resumen:
-                        df_m = pd.DataFrame(st.session_state.analisis_cache[h['Mes']])
-                        ws.write(4, col, h['Mes'].upper(), f_hdr); ws.write(5, col, h['Prom']/100, f_perc)
-                        for n_min, n_max, rb in [(0,25,7),(25,50,11),(50,75,15),(75,100,19)]:
-                            msk = (df_m['Traslape']<=25) if n_min==0 else ((df_m['Traslape']>n_min)&(df_m['Traslape']<=n_max))
-                            sub = df_m[msk]; count = len(sub); pvol = sub['VOL'].mean() if count>0 else 0
-                            fmt = f_v if rb==7 else f_a if rb==11 else f_n if rb==15 else f_r
-                            ws.write(rb, col, count/len(df_m), fmt)
-                            ws.write(rb+1, col, count, f_val); ws.write(rb+2, col, int(pvol), f_val)
-                        ws.write(23, col, len(df_m), f_val); ws.write(24, col, int(df_m['VOL'].mean()), f_footer)
-                        col += 1
-                    # TENDENCIA (Sparklines) - ÍNDICES MANUALES CARGADOS
-                    lc = xlsxwriter.utility.xl_col_to_name(col-1)
-                    ws.write(4, col, "TENDENCIA", f_hdr)
-                    spark_rows = [5, 7, 11, 15, 19, 23, 24] # Filas exactas de datos
-                    for rs in spark_rows:
-                        ws.add_sparkline(rs, col, {'range': f'RESUMEN!B{rs+1}:{lc}{rs+1}', 'type': 'column', 'style': 18})
-
-                    # --- GRÁFICA 1: TRASLAPE VS VRS ---
-                    g1 = wb.add_chart({'type': 'column'}); l1 = wb.add_chart({'type': 'line'})
-                    g1.add_series({'name': 'VRs', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$24:${lc}$24', 'fill': {'color': '#5B9BD5'}})
-                    l1.add_series({'name': 'Traslape %', 'values': f'=RESUMEN!$B$6:${lc}$6', 'y2_axis': True, 'line': {'color': '#C00000', 'width': 2}, 'marker': {'type': 'circle'}})
-                    g1.combine(l1); g1.set_title({'name': 'TRASLAPE VS VRS'}); ws.insert_chart('B28', g1, {'x_scale': 1.1})
-
-                    # --- GRÁFICA 2: MEDICION DE NIVEL ---
-                    g2 = wb.add_chart({'type': 'column', 'subtype': 'percent_stacked'})
-                    for n, r, c in [('Bajo',7,'#92D050'),('Medio',11,'#FFFF00'),('Alto',15,'#FFC000'),('Crítico',19,'#FF0000')]:
-                        g2.add_series({'name': n, 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B${r+1}:${lc}${r+1}', 'fill': {'color': c}})
-                    g2.set_title({'name': 'MEDICION DE NIVEL'}); ws.insert_chart('G28', g2, {'x_scale': 1.1})
-
-                    # --- GRÁFICA 3: DILUCION DE VOLUMEN ---
-                    g3 = wb.add_chart({'type': 'column'}); l3 = wb.add_chart({'type': 'line'})
-                    g3.add_series({'name': 'CARGA PROM', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$25:${lc}$25', 'fill': {'color': '#5B9BD5'}, 'data_labels': {'value': True}})
-                    l3.add_series({'name': 'Total VRs', 'values': f'=RESUMEN!$B$24:${lc}$24', 'line': {'color': '#C00000'}, 'data_labels': {'value': True}})
-                    g3.combine(l3); g3.set_title({'name': 'DILUCION DE VOLUMEN VS VRS'}); ws.insert_chart('L28', g3, {'x_scale': 1.1})
-
-                    # Pestañas Detalle sin columna estatus
-                    for idx_m, n_h in enumerate(st.session_state.dict_hojas.keys()):
-                        df_d = pd.DataFrame(st.session_state.analisis_cache[n_h]).copy()
-                        m_ant = list(st.session_state.dict_hojas.keys())[idx_m-1] if idx_m > 0 else None
-                        df_p = {limpiar_texto_final(r['Zona']):r for r in st.session_state.analisis_cache[m_ant]} if m_ant else {}
-                        ws_det = wb.add_worksheet(n_h[:31]); ws_det.hide_gridlines(2)
-                        ws_det.add_table(3,0,len(df_d)+3,4,{'columns':[{'header':'VR'},{'header':'VOLUMEN'},{'header':'Δ VOL'},{'header':'% TRASLAPE'},{'header':'Δ TRASLAPE'}],'style':'Table Style Medium 2'})
-                        for ri, r in df_d.iterrows():
-                            re = ri+4; zl = limpiar_texto_final(r['Zona'])
-                            ws_det.write(re, 0, r['Zona']); ws_det.write(re, 1, r['VOL'])
-                            if zl in df_p:
-                                dv, dt = int(r['VOL']-df_p[zl]['VOL']), round(r['Traslape']-df_p[zl]['Traslape'], 1)
-                                ws_det.write(re, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#00B050' if dv>0 else '#FF0000' if dv<0 else '#000','bold':True,'align':'right'}))
-                                ws_det.write(re, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#FF0000' if dt>0 else '#00B050' if dt<0 else '#000','bold':True,'align':'right'}))
-                            else:
-                                ws_det.write(re, 2, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
-                                ws_det.write(re, 4, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
-                            
-                            ws_det.write(re, 3, r['Traslape']/100, f_v if r['Traslape']<=25 else f_a if r['Traslape']<=50 else f_n if r['Traslape']<=75 else f_r)
+                st.markdown(f"""
+                    <div style="display: flex; justify-content: space-around; background: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #444; text-align: center;">
+                        <div><p style="color: #bbb; margin:0;">📊 Traslape Total</p><h2 style="margin:0;">{round(p_act,1)}%</h2>{delta_html}</div>
+                        <div style="border-left: 1px solid #444; padding-left: 20px;"><p style="color: #28a745; font-weight: bold; margin:0;">🟢 Bajo</p><h2 style="margin:0; color: #28a745;">{round(b/t_e*100,1)}%</h2><p style="color:#28a745; margin:0;">({b} VRs)</p></div>
+                        <div><p style="color: #ffc107; font-weight: bold; margin:0;">🟡 Medio</p><h2 style="margin:0; color: #ffc107;">{round(m_v/t_e*100,1)}%</h2><p style="color:#ffc107; margin:0;">({m_v} VRs)</p></div>
+                        <div><p style="color: #fd7e14; font-weight: bold; margin:0;">🟠 Alto</p><h2 style="margin:0; color: #fd7e14;">{round(a/t_e*100,1)}%</h2><p style="color:#fd7e14; margin:0;">({a} VRs)</p></div>
+                        <div><p style="color: #dc3545; font-weight: bold; margin:0;">🔴 Crítico</p><h2 style="margin:0; color: #dc3545;">{round(c/t_e*100,1)}%</h2><p style="color:#dc3545; margin:0;">({c} VRs)</p></div>
+                    </div><br>""", unsafe_allow_html=True)
                 
-         if modo != "Crecimiento":
-                    pd.DataFrame(rep_coords).to_excel(wr, sheet_name="Reporte", index=False)
+                st.dataframe(df_ex[["ST", "Zona", "VOL", "Traslape"]].rename(columns={"Zona":"VR", "VOL":"VOLUMEN", "Traslape":"% TR"}), use_container_width=True, hide_index=True)
             
-            c_d2.download_button("📊 DESCARGAR REPORTE", buf.getvalue(), nombre_xlsx, use_container_width=True)
+            elif modo == "Coordenadas":
+                st.subheader("📋 Análisis Operativo")
+                st.dataframe(pd.DataFrame(rep_coords), use_container_width=True, hide_index=True)
+
+    # --- SECCIÓN DE DESCARGAS: VERSIÓN "SOLO BOTONES" (SIN MAPA DUPLICADO) ---
+    if 'm' in locals():
+        st.write("---")
+        
+        # 1. FUNCIÓN DE LIMPIEZA
+        def limpiar_texto_final(t):
+            if not isinstance(t, str): return str(t)
+            import unicodedata
+            t = unicodedata.normalize('NFKD', t).encode('ASCII', 'ignore').decode('ASCII')
+            return t.strip().upper()
+
+        # 2. PREPARACIÓN DE DATOS PARA BOTONES
+        map_data_final = m.get_root().render()
+        from datetime import datetime
+        c_d1, c_d2 = st.columns(2)
+        
+        # Botón para descargar el mapa (No lo visualiza, solo lo descarga)
+        c_d1.download_button("🗺️ Descargar Mapa HTML", map_data_final, f"mapa_{modo.lower()}.html", use_container_width=True)
+
+        nombre_xlsx = f"REPORTE_ESTRATEGICO_{datetime.now().strftime('%d_%m_%Y')}.xlsx"
+        buf = io.BytesIO()
+        
+        with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
+            wb = wr.book
+            # --- FORMATOS RÉPLICA IMAGEN ---
+            f_white = wb.add_format({'bg_color': '#FFFFFF'})
+            f_hdr   = wb.add_format({'bold': True, 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1, 'align': 'center', 'font_size': 9})
+            f_lbl   = wb.add_format({'bold': True, 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1, 'align': 'left', 'font_size': 8})
+            f_perc  = wb.add_format({'bg_color': '#FFFFFF', 'bold': True, 'align': 'center', 'num_format': '0.0%', 'border': 1, 'font_size': 9})
+            f_val   = wb.add_format({'bg_color': '#FFFFFF', 'align': 'center', 'border': 1, 'font_size': 9})
+            
+            f_v = wb.add_format({'bg_color': '#92D050', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+            f_a = wb.add_format({'bg_color': '#FFFF00', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+            f_n = wb.add_format({'bg_color': '#FFC000', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+            f_r = wb.add_format({'bg_color': '#FF0000', 'font_color': 'white', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+            f_footer = wb.add_format({'bg_color': '#DDEBF7', 'bold': True, 'border': 1, 'align': 'center'})
+
+            if modo == "Crecimiento" and st.session_state.historico_resumen:
+                ws = wb.add_worksheet("RESUMEN")
+                ws.hide_gridlines(2)
+                ws.set_column('A:A', 28, f_white); ws.set_column('B:Z', 15, f_white)
+                ws.write('A1', "RESUMEN DE ANALISIS GENERAL", wb.add_format({'bold': True, 'font_size': 14}))
+
+                # Estructura Horizontal
+                ws.write(4, 0, "MES / PERIODO", f_hdr)
+                ws.write(5, 0, "TRASLAPE TOTAL %", f_lbl)
+                row_map = [
+                    ("NIVEL BAJO (%)", 7, f_v), ("VR", 8, f_val), ("P. VOL", 9, f_val),
+                    ("NIVEL MEDIO (%)", 11, f_a), ("VR", 12, f_val), ("P. VOL", 13, f_val),
+                    ("NIVEL ALTO (%)", 15, f_n), ("VR", 16, f_val), ("P. VOL", 17, f_val),
+                    ("NIVEL CRÍTICO (%)", 19, f_r), ("VR", 20, f_val), ("P. VOL", 21, f_val),
+                    ("TOTAL VRs", 23, f_lbl), ("CARGA PROM. GLOBAL", 24, f_lbl)
+                ]
+                for txt, r, _ in row_map: ws.write(r, 0, txt, f_lbl)
+
+                col = 1
+                for h in st.session_state.historico_resumen:
+                    df_m = pd.DataFrame(st.session_state.analisis_cache[h['Mes']])
+                    ws.write(4, col, h['Mes'].upper(), f_hdr); ws.write(5, col, h['Prom']/100, f_perc)
+                    for n_min, n_max, rb in [(0,25,7),(25,50,11),(50,75,15),(75,100,19)]:
+                        msk = (df_m['Traslape']<=25) if n_min==0 else ((df_m['Traslape']>n_min)&(df_m['Traslape']<=n_max))
+                        sub = df_m[msk]; count = len(sub); pvol = sub['VOL'].mean() if count>0 else 0
+                        fmt = f_v if rb==7 else f_a if rb==11 else f_n if rb==15 else f_r
+                        ws.write(rb, col, count/len(df_m), fmt)
+                        ws.write(rb+1, col, count, f_val); ws.write(rb+2, col, int(pvol), f_val)
+                    ws.write(23, col, len(df_m), f_val); ws.write(24, col, int(df_m['VOL'].mean()), f_footer)
+                    col += 1
+
+                # TENDENCIA (Sparklines) - ÍNDICES MANUALES CARGADOS
+                lc = xlsxwriter.utility.xl_col_to_name(col-1)
+                ws.write(4, col, "TENDENCIA", f_hdr)
+                spark_rows = [5, 7, 11, 15, 19, 23, 24] # Filas exactas de datos
+                for rs in spark_rows:
+                    ws.add_sparkline(rs, col, {'range': f'RESUMEN!B{rs+1}:{lc}{rs+1}', 'type': 'column', 'style': 18})
+
+                # --- GRÁFICA 1: TRASLAPE VS VRS ---
+                g1 = wb.add_chart({'type': 'column'}); l1 = wb.add_chart({'type': 'line'})
+                g1.add_series({'name': 'VRs', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$24:${lc}$24', 'fill': {'color': '#5B9BD5'}})
+                l1.add_series({'name': 'Traslape %', 'values': f'=RESUMEN!$B$6:${lc}$6', 'y2_axis': True, 'line': {'color': '#C00000', 'width': 2}, 'marker': {'type': 'circle'}})
+                g1.combine(l1); g1.set_title({'name': 'TRASLAPE VS VRS'}); ws.insert_chart('B28', g1, {'x_scale': 1.1})
+
+                # --- GRÁFICA 2: MEDICION DE NIVEL ---
+                g2 = wb.add_chart({'type': 'column', 'subtype': 'percent_stacked'})
+                for n, r, c in [('Bajo',7,'#92D050'),('Medio',11,'#FFFF00'),('Alto',15,'#FFC000'),('Crítico',19,'#FF0000')]:
+                    g2.add_series({'name': n, 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B${r+1}:${lc}${r+1}', 'fill': {'color': c}})
+                g2.set_title({'name': 'MEDICION DE NIVEL'}); ws.insert_chart('G28', g2, {'x_scale': 1.1})
+
+                # --- GRÁFICA 3: DILUCION DE VOLUMEN ---
+                g3 = wb.add_chart({'type': 'column'}); l3 = wb.add_chart({'type': 'line'})
+                g3.add_series({'name': 'CARGA PROM', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$25:${lc}$25', 'fill': {'color': '#5B9BD5'}, 'data_labels': {'value': True}})
+                l3.add_series({'name': 'Total VRs', 'values': f'=RESUMEN!$B$24:${lc}$24', 'line': {'color': '#C00000'}, 'data_labels': {'value': True}})
+                g3.combine(l3); g3.set_title({'name': 'DILUCION DE VOLUMEN VS VRS'}); ws.insert_chart('L28', g3, {'x_scale': 1.1})
+
+                # Pestañas Detalle sin columna estatus
+                for idx_m, n_h in enumerate(st.session_state.dict_hojas.keys()):
+                    df_d = pd.DataFrame(st.session_state.analisis_cache[n_h]).copy()
+                    m_ant = list(st.session_state.dict_hojas.keys())[idx_m-1] if idx_m > 0 else None
+                    df_p = {limpiar_texto_final(r['Zona']):r for r in st.session_state.analisis_cache[m_ant]} if m_ant else {}
+                    ws_det = wb.add_worksheet(n_h[:31]); ws_det.hide_gridlines(2)
+                    ws_det.add_table(3,0,len(df_d)+3,4,{'columns':[{'header':'VR'},{'header':'VOLUMEN'},{'header':'Δ VOL'},{'header':'% TRASLAPE'},{'header':'Δ TRASLAPE'}],'style':'Table Style Medium 2'})
+                    for ri, r in df_d.iterrows():
+                        re = ri+4; zl = limpiar_texto_final(r['Zona'])
+                        ws_det.write(re, 0, r['Zona']); ws_det.write(re, 1, r['VOL'])
+                        if zl in df_p:
+                            dv, dt = int(r['VOL']-df_p[zl]['VOL']), round(r['Traslape']-df_p[zl]['Traslape'], 1)
+                            ws_det.write(re, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#00B050' if dv>0 else '#FF0000' if dv<0 else '#808080'}))
+                            ws_det.write(re, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#FF0000' if dt>0 else '#00B050' if dt<0 else '#808080'}))
+                        else:
+                            ws_det.write(re, 2, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
+                            ws_det.write(re, 4, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
+                        ws_det.write(re, 3, r['Traslape']/100, f_v if r['Traslape']<=25 else f_a if r['Traslape']<=50 else f_n if r['Traslape']<=75 else f_r)
+            
+            else:
+                pd.DataFrame(rep_coords).to_excel(wr, sheet_name="Reporte", index=False)
+        
+        c_d2.download_button("📊 DESCARGAR REPORTE", buf.getvalue(), nombre_xlsx, use_container_width=True)
