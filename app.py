@@ -134,7 +134,7 @@ if st.session_state.get("authentication_status"):
                     fg = folium.FeatureGroup(name=nom_fg, show=(i_fg == st.session_state.idx_hoja))
                     data_fg = [r for r in st.session_state.analisis_cache[nom_fg] if r['R_ID'] in acts]
                     for p in data_fg:
-                        folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"Nombre: {p1['NOM']}<br>Volumen: {vol_p}<br>Traslape: {tr_r}%").add_to(m)
+                        folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"Nombre: {p1['NOM']}<br>Volumen: {int(p1['VOL'])}<br>Traslape: {tr_r}%").add_to(m)
                         if ver_n: folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p["Zona"]}</div>')).add_to(fg)
                     fg.add_to(m)
                 folium.LayerControl(position='topright', collapsed=False).add_to(m)
