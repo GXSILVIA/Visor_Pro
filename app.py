@@ -258,164 +258,118 @@ if st.session_state.get("authentication_status"):
                 elif modo == "Coordenadas":
                     st.subheader("📋 Análisis Operativo")
                     st.dataframe(pd.DataFrame(rep_coords), use_container_width=True, hide_index=True)
-
-        # --- SECCIÓN DE DESCARGAS: DASHBOARD ESTRATÉGICO FINAL REVISADO ---
-        from datetime import datetime
-        import xlsxwriter.utility
-        import unicodedata
-
-        def limpiar_texto(t):
-            if not isinstance(t, str): return str(t)
-            t = unicodedata.normalize('NFKD', t).encode('ASCII', 'ignore').decode('ASCII')
-            return t.strip().upper()
-
-        st.write("---")
-        c_desc1, c_desc2 = st.columns(2)
-        
-        # --- RENDERIZADO SEGURO DEL MAPA EN PANTALLA ---
-            try:
-                map_html = m.get_root().render()
-                components.html(map_html, height=450)
-            except Exception:
-                st.info("👋 Por favor, carga y procesa un archivo Excel válido para activar el mapa de esta capa.")
-
-        # 2. GENERACIÓN DEL EXCEL DASHBOARD
-        fecha_hoy = datetime.now().strftime("%d_%m_%Y")
-        nombre_archivo_excel = f"REPORTE_{fecha_hoy}.xlsx"
-        buf = io.BytesIO()
-        
-        with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
-            wb = wr.book
-            # --- PALETA DE FORMATOS ---
-            f_header = wb.add_format({'bold': True, 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
-            f_title  = wb.add_format({'bold': True, 'font_size': 14, 'font_color': '#1F4E78', 'align': 'center'})
-            f_mes    = wb.add_format({'bg_color': '#1F4E78', 'font_color': 'white', 'bold': True, 'border': 1, 'align': 'center'})
-            f_perc_w = wb.add_format({'bg_color': '#FFFFFF', 'bold': True, 'align': 'center', 'num_format': '0.0%', 'border': 1})
-            f_data_w = wb.add_format({'bg_color': '#FFFFFF', 'align': 'center', 'border': 1})
+    
+        # --- SECCIÓN DE DESCARGAS: VERSIÓN "SOLO BOTONES" (SIN MAPA DUPLICADO) ---
+        if 'm' in locals():
+            st.write("---")
             
-            # Semáforo de Fondo (Intenso)
-            f_v = wb.add_format({'bg_color': '#92D050', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
-            f_a = wb.add_format({'bg_color': '#FFFF00', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
-            f_n = wb.add_format({'bg_color': '#FFC000', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
-            f_r = wb.add_format({'bg_color': '#FF0000', 'font_color': 'white', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+            # 1. FUNCIÓN DE LIMPIEZA
+            def limpiar_texto_final(t):
+                if not isinstance(t, str): return str(t)
+                import unicodedata
+                t = unicodedata.normalize('NFKD', t).encode('ASCII', 'ignore').decode('ASCII')
+                return t.strip().upper()
 
-            if modo == "Crecimiento" and st.session_state.historico_resumen:
-                ws_res = wb.add_worksheet("RESUMEN")
-                ws_res.hide_gridlines(2)
-                ws_res.set_column('A:A', 15)
-                ws_res.set_column('B:B', 18)
-                ws_res.set_column('C:N', 10)
-                ws_res.set_column('O:O', 15)
-                
-                ws_res.merge_range('A1:O2', "EVOLUCIÓN Y SALUD", f_title)
-
-                # --- ENCABEZADOS SEGÚN IMAGEN ---
-                ws_res.write(4, 0, "MES", f_header)
-                ws_res.write(4, 1, "TRASLAPE TOTAL", f_header)
-                ws_res.write(4, 2, "NIVEL BAJO", f_header); ws_res.write(4, 3, "VR", f_header); ws_res.write(4, 4, "P. VOL", f_header)
-                ws_res.write(4, 5, "NIVEL MEDIO", f_header); ws_res.write(4, 6, "VR", f_header); ws_res.write(4, 7, "P. VOL", f_header)
-                ws_res.write(4, 8, "NIVEL ALTO", f_header); ws_res.write(4, 9, "VR", f_header); ws_res.write(4, 10, "P. VOL", f_header)
-                ws_res.write(4, 11, "NIVEL CRÍTICO", f_header); ws_res.write(4, 12, "VR", f_header); ws_res.write(4, 13, "P. VOL", f_header)
-                ws_res.write(4, 14, "TOTAL VRs", f_header)
-
-                row_idx = 5
-                for h_res in st.session_state.historico_resumen:
-                    df_m = pd.DataFrame(st.session_state.analisis_cache[h_res['Mes']])
-                    total_m = len(df_m) or 1
-                    ws_res.write(row_idx, 0, h_res['Mes'].upper(), f_mes)
-                    ws_res.write(row_idx, 1, h_res['Prom']/100, f_perc_w)
-                    
-                    col_off = 2
-                    for n_min, n_max, n_fmt in [(0, 25, f_v), (25, 50, f_a), (50, 75, f_n), (75, 100, f_r)]:
-                        mask = (df_m['Traslape'] <= 25) if n_min==0 else ((df_m['Traslape'] > n_min) & (df_m['Traslape'] <= n_max))
-                        sub = df_m[mask]
-                        count_n = len(sub)
-                        p_vol = sub['VOL'].mean() if count_n > 0 else 0
-                        
-                        ws_res.write(row_idx, col_off, count_n/total_m, n_fmt) # % Nivel
-                        ws_res.write(row_idx, col_off + 1, count_n, f_data_w) # VR
-                        ws_res.write(row_idx, col_off + 2, int(p_vol), f_data_w) # P. VOL
-                        col_off += 3
-                    
-                    ws_res.write(row_idx, 14, total_m, wb.add_format({'align':'center', 'border':1, 'bold':True}))
-                    row_idx += 1
-
-                # --- FILA DE TENDENCIA (COLUMNAS ESPECÍFICAS) ---
-                ws_res.write(row_idx, 0, "TENDENCIA", f_mes)
-                cols_tendencia = [1, 2, 5, 8, 11, 14] # Traslape Total, % Bajos, % Medios, % Altos, % Críticos, Total VRs
-                for c in cols_tendencia:
-                    col_l = xlsxwriter.utility.xl_col_to_name(c)
-                    ws_res.add_sparkline(row_idx, c, {
-                        'range': f'RESUMEN!{col_l}6:{col_l}{row_idx}', 
-                        'type': 'column', 
-                        'style': 18
-                    })
-
-                # --- GRÁFICA DOBLE EJE (RÉPLICA EXACTA) ---
-                chart = wb.add_chart({'type': 'column'})
-                line_obj = wb.add_chart({'type': 'line'})
-                
-                # Serie 1: VRs Totales (Eje Principal)
-                chart.add_series({
-                    'name': 'VRs Totales',
-                    'categories': f'=RESUMEN!$A$6:$A${row_idx}',
-                    'values':     f'=RESUMEN!$O$6:$O${row_idx}',
-                    'fill':   {'color': '#DDEBF7'},
-                    'border': {'color': '#1F4E78'},
-                    'data_labels': {'value': True, 'position': 'inside_base'}
-                })
-                
-                # Serie 2: Traslape % (Eje Secundario - ETIQUETAS ARRIBA)
-                line_obj.add_series({
-                    'name': 'Traslape %',
-                    'values': f'=RESUMEN!$B$6:$B${row_idx}',
-                    'y2_axis': True,
-                    'line':   {'color': '#8FAADC', 'width': 2.5},
-                    'marker': {'type': 'circle', 'size': 7, 'border': {'color': '#1F4E78'}, 'fill': {'color': '#FFFFFF'}},
-                    'data_labels': {
-                        'value': True, 
-                        'position': 'above', 
-                        'num_format': '0.0"%"',
-                        'font': {'bold': True, 'color': '#595959'}
-                    }
-                })
-                
-                chart.combine(line_obj)
-                chart.set_legend({'position': 'bottom'})
-                chart.set_y_axis({'name': 'VRs', 'major_gridlines': {'visible': False}})
-                chart.set_y2_axis({'name': '% TRASLAPES', 'num_format': '0%', 'major_gridlines': {'visible': True}})
-                ws_res.insert_chart('A18', chart, {'x_scale': 2.2, 'y_scale': 1.4})
-
-                # --- PESTAÑAS DE DETALLE ---
-                for idx_m, n_h in enumerate(st.session_state.dict_hojas.keys()):
-                    df_d = pd.DataFrame(st.session_state.analisis_cache[n_h]).copy()
-                    prom_m = next(x['Prom'] for x in st.session_state.historico_resumen if x['Mes'] == n_h)
-                    df_ant = {limpiar_texto(r['Zona']): r for r in st.session_state.analisis_cache[list(st.session_state.dict_hojas.keys())[idx_m-1]]} if idx_m > 0 else {}
-                    
-                    ws_det = wb.add_worksheet(n_h[:31])
-                    ws_det.hide_gridlines(2)
-                    ws_det.write(0, 0, f"DETALLE: {n_h.upper()} | TRASLAPE TOTAL: {prom_m:.1f}%", f_title)
-                    ws_det.set_column('A:A', 40); ws_det.set_column('B:E', 15)
-                    
-                    for ci, h in enumerate(["VR", "VOLUMEN", "Δ VOL", "% TRASLAPE", "Δ TRASLAPE"]):
-                        ws_det.write(3, ci, h, f_header)
-
-                    for ri, r in df_d.iterrows():
-                        r_n = ri + 4; ws_det.write(r_n, 0, r['Zona']); ws_det.write(r_n, 1, r['VOL'])
-                        z_l = limpiar_texto(r['Zona'])
-                        if z_l in df_ant:
-                            dv = int(r['VOL'] - df_ant[z_l]['VOL'])
-                            ws_det.write(r_n, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#00B050' if dv>0 else '#FF0000' if dv<0 else '#000', 'align':'right', 'bold':True}))
-                            dt = round(r['Traslape'] - df_ant[z_l]['Traslape'], 1)
-                            ws_det.write(r_n, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#FF0000' if dt>0 else '#00B050' if dt<0 else '#000', 'align':'right', 'bold':True}))
-                        else:
-                            ws_det.write(r_n, 2, "▼ NUEVO", wb.add_format({'align':'right', 'bold':True}))
-                            ws_det.write(r_n, 4, "▼ NUEVO", wb.add_format({'align':'right', 'bold':True}))
-                        
-                        t_v = r['Traslape'] / 100
-                        f_f = f_v if r['Traslape']<=25 else f_a if r['Traslape']<=50 else f_n if r['Traslape']<=75 else f_r
-                        ws_det.write(r_n, 3, t_v, f_f)
-
-            else: pd.DataFrame(rep_coords).to_excel(wr, sheet_name="Reporte", index=False)
+            # 2. PREPARACIÓN DE DATOS PARA BOTONES
+            map_data_final = m.get_root().render()
+            from datetime import datetime
+            c_d1, c_d2 = st.columns(2)
             
-        c_desc2.download_button(label="📊 DESCARGAR REPORTE", data=buf.getvalue(), file_name=nombre_archivo_excel, use_container_width=True)
+            # Botón para descargar el mapa (No lo visualiza, solo lo descarga)
+            c_d1.download_button("🗺️ Descargar Mapa HTML", map_data_final, f"mapa_{modo.lower()}.html", use_container_width=True)
+
+            nombre_xlsx = f"REPORTE_ESTRATEGICO_{datetime.now().strftime('%d_%m_%Y')}.xlsx"
+            buf = io.BytesIO()
+            
+            with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
+                wb = wr.book
+                # --- FORMATOS RÉPLICA IMAGEN ---
+                f_white = wb.add_format({'bg_color': '#FFFFFF'})
+                f_hdr   = wb.add_format({'bold': True, 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1, 'align': 'center', 'font_size': 9})
+                f_lbl   = wb.add_format({'bold': True, 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1, 'align': 'left', 'font_size': 8})
+                f_perc  = wb.add_format({'bg_color': '#FFFFFF', 'bold': True, 'align': 'center', 'num_format': '0.0%', 'border': 1, 'font_size': 9})
+                f_val   = wb.add_format({'bg_color': '#FFFFFF', 'align': 'center', 'border': 1, 'font_size': 9})
+                
+                f_v = wb.add_format({'bg_color': '#92D050', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+                f_a = wb.add_format({'bg_color': '#FFFF00', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+                f_n = wb.add_format({'bg_color': '#FFC000', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+                f_r = wb.add_format({'bg_color': '#FF0000', 'font_color': 'white', 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+                f_footer = wb.add_format({'bg_color': '#DDEBF7', 'bold': True, 'border': 1, 'align': 'center'})
+
+                if modo == "Crecimiento" and st.session_state.historico_resumen:
+                    ws = wb.add_worksheet("RESUMEN")
+                    ws.hide_gridlines(2)
+                    ws.set_column('A:A', 28, f_white); ws.set_column('B:Z', 15, f_white)
+                    ws.write('A1', "RESUMEN DE ANALISIS GENERAL", wb.add_format({'bold': True, 'font_size': 14}))
+
+                    # Estructura Horizontal
+                    ws.write(4, 0, "MES / PERIODO", f_hdr)
+                    ws.write(5, 0, "TRASLAPE TOTAL %", f_lbl)
+                    row_map = [
+                        ("NIVEL BAJO (%)", 7, f_v), ("VR", 8, f_val), ("P. VOL", 9, f_val),
+                        ("NIVEL MEDIO (%)", 11, f_a), ("VR", 12, f_val), ("P. VOL", 13, f_val),
+                        ("NIVEL ALTO (%)", 15, f_n), ("VR", 16, f_val), ("P. VOL", 17, f_val),
+                        ("NIVEL CRÍTICO (%)", 19, f_r), ("VR", 20, f_val), ("P. VOL", 21, f_val),
+                        ("TOTAL VRs", 23, f_lbl), ("CARGA PROM. GLOBAL", 24, f_lbl)
+                    ]
+                    for txt, r, _ in row_map: ws.write(r, 0, txt, f_lbl)
+
+                    col = 1
+                    for h in st.session_state.historico_resumen:
+                        df_m = pd.DataFrame(st.session_state.analisis_cache[h['Mes']])
+                        ws.write(4, col, h['Mes'].upper(), f_hdr); ws.write(5, col, h['Prom']/100, f_perc)
+                        for n_min, n_max, rb in [(0,25,7),(25,50,11),(50,75,15),(75,100,19)]:
+                            msk = (df_m['Traslape']<=25) if n_min==0 else ((df_m['Traslape']>n_min)&(df_m['Traslape']<=n_max))
+                            sub = df_m[msk]; count = len(sub); pvol = sub['VOL'].mean() if count>0 else 0
+                            fmt = f_v if rb==7 else f_a if rb==11 else f_n if rb==15 else f_r
+                            ws.write(rb, col, count/len(df_m), fmt)
+                            ws.write(rb+1, col, count, f_val); ws.write(rb+2, col, int(pvol), f_val)
+                        ws.write(23, col, len(df_m), f_val); ws.write(24, col, int(df_m['VOL'].mean()), f_footer)
+                        col += 1
+
+                    # TENDENCIA (Sparklines) - ÍNDICES MANUALES CARGADOS
+                    lc = xlsxwriter.utility.xl_col_to_name(col-1)
+                    ws.write(4, col, "TENDENCIA", f_hdr)
+                    spark_rows = [5, 7, 11, 15, 19, 23, 24] # Filas exactas de datos
+                    for rs in spark_rows:
+                        ws.add_sparkline(rs, col, {'range': f'RESUMEN!B{rs+1}:{lc}{rs+1}', 'type': 'column', 'style': 18})
+
+                    # --- GRÁFICA 1: TRASLAPE VS VRS ---
+                    g1 = wb.add_chart({'type': 'column'}); l1 = wb.add_chart({'type': 'line'})
+                    g1.add_series({'name': 'VRs', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$24:${lc}$24', 'fill': {'color': '#5B9BD5'}})
+                    l1.add_series({'name': 'Traslape %', 'values': f'=RESUMEN!$B$6:${lc}$6', 'y2_axis': True, 'line': {'color': '#C00000', 'width': 2}, 'marker': {'type': 'circle'}})
+                    g1.combine(l1); g1.set_title({'name': 'TRASLAPE VS VRS'}); ws.insert_chart('B28', g1, {'x_scale': 1.1})
+
+                    # --- GRÁFICA 2: MEDICION DE NIVEL ---
+                    g2 = wb.add_chart({'type': 'column', 'subtype': 'percent_stacked'})
+                    for n, r, c in [('Bajo',7,'#92D050'),('Medio',11,'#FFFF00'),('Alto',15,'#FFC000'),('Crítico',19,'#FF0000')]:
+                        g2.add_series({'name': n, 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B${r+1}:${lc}${r+1}', 'fill': {'color': c}})
+                    g2.set_title({'name': 'MEDICION DE NIVEL'}); ws.insert_chart('G28', g2, {'x_scale': 1.1})
+
+                    # --- GRÁFICA 3: DILUCION DE VOLUMEN ---
+                    g3 = wb.add_chart({'type': 'column'}); l3 = wb.add_chart({'type': 'line'})
+                    g3.add_series({'name': 'CARGA PROM', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$25:${lc}$25', 'fill': {'color': '#5B9BD5'}, 'data_labels': {'value': True}})
+                    l3.add_series({'name': 'Total VRs', 'values': f'=RESUMEN!$B$24:${lc}$24', 'line': {'color': '#C00000'}, 'data_labels': {'value': True}})
+                    g3.combine(l3); g3.set_title({'name': 'DILUCION DE VOLUMEN VS VRS'}); ws.insert_chart('L28', g3, {'x_scale': 1.1})
+
+                    # Pestañas Detalle sin columna estatus
+                    for idx_m, n_h in enumerate(st.session_state.dict_hojas.keys()):
+                        df_d = pd.DataFrame(st.session_state.analisis_cache[n_h]).copy()
+                        m_ant = list(st.session_state.dict_hojas.keys())[idx_m-1] if idx_m > 0 else None
+                        df_p = {limpiar_texto_final(r['Zona']):r for r in st.session_state.analisis_cache[m_ant]} if m_ant else {}
+                        ws_det = wb.add_worksheet(n_h[:31]); ws_det.hide_gridlines(2)
+                        ws_det.add_table(3,0,len(df_d)+3,4,{'columns':[{'header':'VR'},{'header':'VOLUMEN'},{'header':'Δ VOL'},{'header':'% TRASLAPE'},{'header':'Δ TRASLAPE'}],'style':'Table Style Medium 2'})
+                        for ri, r in df_d.iterrows():
+                            re = ri+4; zl = limpiar_texto_final(r['Zona'])
+                            ws_det.write(re, 0, r['Zona']); ws_det.write(re, 1, r['VOL'])
+                            if zl in df_p:
+                                dv, dt = int(r['VOL']-df_p[zl]['VOL']), round(r['Traslape']-df_p[zl]['Traslape'], 1)
+                                ws_det.write(re, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#00B050' if dv>0 else '#FF0000' if dv<0 else '#000','bold':True,'align':'right'}))
+                                ws_det.write(re, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#FF0000' if dt>0 else '#00B050' if dt<0 else '#000','bold':True,'align':'right'}))
+                            else:
+                                ws_det.write(re, 2, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
+                                ws_det.write(re, 4, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
+                            ws_det.write(re, 3, r['Traslape']/100, f_v if r['Traslape']<=25 else f_a if r['Traslape']<=50 else f_n if r['Traslape']<=75 else f_r)
+                else: pd.DataFrame(rep_coords).to_excel(wr, sheet_name="Reporte", index=False)
+            
+            c_d2.download_button("📊 DESCARGAR REPORTE", buf.getvalue(), nombre_xlsx, use_container_width=True)
