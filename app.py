@@ -135,6 +135,7 @@ if st.session_state.get("authentication_status"):
                     data_fg = [r for r in st.session_state.analisis_cache[nom_fg] if r['R_ID'] in acts]
                     for p in data_fg:
                         folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"Nombre: {p1['NOM']}<br>Volumen: {int(p1['VOL'])}<br>Traslape: {tr_r}%").add_to(m)
+
                         if ver_n: folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p["Zona"]}</div>')).add_to(fg)
                     fg.add_to(m)
                 folium.LayerControl(position='topright', collapsed=False).add_to(m)
@@ -184,7 +185,8 @@ if st.session_state.get("authentication_status"):
                         st_v = "🟡 Atención" # Para volúmenes > 35 con traslape > 50%
                     
                     ints = [round((area_interseccion(p1['RAD'], p2['RAD'], np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139)/(np.pi*p1['RAD']**2))*100,1) for p2 in otros if np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139 < (p1['RAD']+p2['RAD'])]
-                    folium.Circle([p1['LAT'], p1['LON']], radius=p1['RAD'], color=clrs[p1['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"{p1['NOM']}: {tr_r}%").add_to(m)
+                    folium.Circle([p1['LAT'], p1['LON']], radius=p1['RAD'], color=clrs[p1['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"Nombre: {p1['NOM']}<br>Volumen: {int(p1['VOL'])}<br>Traslape: {tr_r}%").add_to(m)
+
                     
                     if ver_n: 
                         folium.Marker([p1['LAT'], p1['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
