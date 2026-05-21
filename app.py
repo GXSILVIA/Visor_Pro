@@ -271,10 +271,13 @@ if st.session_state.get("authentication_status"):
 
         st.write("---")
         c_desc1, c_desc2 = st.columns(2)
-
-        # 1. RENDERIZADO ÚNICO DEL MAPA
-        map_html = m.get_root().render()
-        c_desc1.download_button(label="🗺️ Descargar Mapa HTML", data=map_html, file_name=f"mapa_{modo.lower().replace(' ','_')}.html", use_container_width=True)
+        
+        # --- RENDERIZADO SEGURO DEL MAPA EN PANTALLA ---
+            try:
+                map_html = m.get_root().render()
+                components.html(map_html, height=450)
+            except Exception:
+                st.info("👋 Por favor, carga y procesa un archivo Excel válido para activar el mapa de esta capa.")
 
         # 2. GENERACIÓN DEL EXCEL DASHBOARD
         fecha_hoy = datetime.now().strftime("%d_%m_%Y")
