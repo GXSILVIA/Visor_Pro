@@ -126,7 +126,7 @@ if st.session_state.get("authentication_status"):
         if not hay_d: st.info("👋 Por favor, procesa un archivo para visualizar.")
         else:
             m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB Voyager")
-            clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#F00", 4:"#FF00FF", 5:"#800000"}; rep_coords = []
+            clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#F00", 4:"#B7094C", 5:"#800000"}; rep_coords = []
 
             if modo == "Crecimiento":
                 nh_all = list(st.session_state.dict_hojas.keys())
