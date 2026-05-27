@@ -125,12 +125,11 @@ if st.session_state.get("authentication_status"):
         hay_d = (modo == "Crecimiento" and st.session_state.dict_hojas) or (modo != "Crecimiento" and st.session_state.df_datos is not None)
         if not hay_d: st.info("👋 Por favor, procesa un archivo para visualizar.")
         else:
-                        # 1. Se crea tu mapa base original
+                                            # 1. Se crea tu mapa base original
             m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB Voyager")
 
-            # 2. AJUSTE DE CONTRASTE NATIVO (Sin librerías externas)
-            from folium.plugins import MacroElement
-            from jinja2 import Template
+            # 2. AJUSTE DE CONTRASTE NATIVO (Rutas de importación corregidas)
+            from branca.element import MacroElement, Template
 
             class AjusteContraste(MacroElement):
                 def __init__(self):
@@ -143,7 +142,7 @@ if st.session_state.get("authentication_status"):
                         {% endmacro %}
                     """)
 
-            # Añadir el ajuste de contraste de forma segura al mapa
+            # Añadir el ajuste de contraste de forma segura al mapa base
             m.add_child(AjusteContraste())
 
             clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#F00", 4:"#B7094C", 5:"#800000"}; rep_coords = []
