@@ -125,7 +125,29 @@ if st.session_state.get("authentication_status"):
         hay_d = (modo == "Crecimiento" and st.session_state.dict_hojas) or (modo != "Crecimiento" and st.session_state.df_datos is not None)
         if not hay_d: st.info("👋 Por favor, procesa un archivo para visualizar.")
         else:
+                        # 1. Creas tu mapa base como siempre
             m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB Voyager")
+
+            # 2. INYECTAR CONTRASTE PERSONALIZADO MEDIANTE CSS (Quita lo blanco lavando el fondo)
+            from brittle import Element # Folium usa elementos nativos, o puedes usar la macro directamente:
+            from folium.plugins import MacroElement
+            from jinja2 import Template
+
+            class AjusteContraste(MacroElement):
+                def __init__(self):
+                    super(AjusteContraste, self).__init__()
+                    self._template = Template("""
+                        {% macro script(this, kwargs) %}
+                        // Selecciona las imágenes del mapa y les baja el brillo e incrementa el contraste
+                        var estilo = document.createElement('style');
+                        estilo.innerHTML = '.leaflet-tile-container img { filter: brightness(0.92) contrast(1.15) saturate(1.1); }';
+                        document.body.appendChild(estilo);
+                        {% endmacro %}
+                    """)
+
+            # Añadir el ajuste de contraste al mapa
+            m.add_child(AjusteContraste())
+
             clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#F00", 4:"#B7094C", 5:"#800000"}; rep_coords = []
 
             if modo == "Crecimiento":
