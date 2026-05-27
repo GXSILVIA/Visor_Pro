@@ -126,24 +126,21 @@ if st.session_state.get("authentication_status"):
         if not hay_d: st.info("👋 Por favor, procesa un archivo para visualizar.")
         else:
                                             # 1. Se crea tu mapa base original
+                        # 1. Se crea tu mapa base original
             m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB Voyager")
 
-            # 2. AJUSTE DE CONTRASTE NATIVO (Rutas de importación corregidas)
-            from branca.element import MacroElement, Template
+            # 2. INYECTOR DIRECTO DE CSS EN LA CABECERA (Fuerza el contraste al 100%)
+            from branca.element import Element
 
-            class AjusteContraste(MacroElement):
-                def __init__(self):
-                    super(AjusteContraste, self).__init__()
-                    self._template = Template("""
-                        {% macro script(this, kwargs) %}
-                        var estilo = document.createElement('style');
-                        estilo.innerHTML = '.leaflet-tile-container img { filter: brightness(0.90) contrast(1.20) saturate(1.1); }';
-                        document.body.appendChild(estilo);
-                        {% endmacro %}
-                    """)
-
-            # Añadir el ajuste de contraste de forma segura al mapa base
-            m.add_child(AjusteContraste())
+            estilo_contraste = """
+            <style>
+                .leaflet-tile-container img { 
+                    filter: brightness(0.88) contrast(1.25) saturate(1.1) !important; 
+                }
+            </style>
+            """
+            # Se inyecta la regla CSS en la cabecera interna del mapa HTML
+            m.get_root().header.add_child(Element(estilo_contraste))
 
             clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#F00", 4:"#B7094C", 5:"#800000"}; rep_coords = []
 
