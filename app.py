@@ -280,7 +280,6 @@ if st.session_state.get("authentication_status"):
                         "TRASLAPADO ACUMULADO %": f"{round(sum(ints), 1)}%",
                         "ZONAS ENCIMA (100% TR)": celda_tabla_encima
                     })
-
                     
                     if ver_n: 
                         folium.Marker([p1['LAT'], p1['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
