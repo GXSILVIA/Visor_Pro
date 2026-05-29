@@ -209,6 +209,7 @@ if st.session_state.get("authentication_status"):
                 m.fit_bounds(b_pol)
 
             else: # Coordenadas
+                           
                 df_v = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)]
                 pts = df_v.to_dict('records')
                 
@@ -217,9 +218,10 @@ if st.session_state.get("authentication_status"):
                 
                 for i, p1 in enumerate(pts):
                     lat1, lon1, rad1 = p1['LAT'], p1['LON'], p1['RAD']
+                    vol_p = int(p1['VOL'])
                     
-                    # --- FILTRO GEOGRÁFICO NACIONAL DE ALTA VELOCIDAD ---
-                    margen_grados = (rad1 + 5000) / m_grado 
+                    # --- FILTRO GEOGRÁFICO ADAPTABLE ---
+                    margen_grados = (rad1 + 10000) / m_grado 
                     
                     otros = [
                         p for j, p in enumerate(pts) 
@@ -230,10 +232,9 @@ if st.session_state.get("authentication_status"):
                     
                     if not otros:
                         tr_r = 0.0
-                        sobre_quienes = []
                         ints = []
                     else:
-                        tr_sim, sobre_quienes = calcular_traslape_real(p1, otros)
+                        tr_sim, _ = calcular_traslape_real(p1, otros)
                         tr_r = round(tr_sim, 1)
                         
                         ints = []
@@ -244,14 +245,7 @@ if st.session_state.get("authentication_status"):
                                 area_int = area_interseccion(rad1, p2['RAD'], dist)
                                 ints.append(round((area_int / (np.pi * rad1**2)) * 100, 1))
                     
-                    vol_p = int(p1['VOL'])
-                    texto_encima = ""
-                    celda_tabla_encima = "Ninguna (Sano / Traslape Parcial)"
-                    
-                    if tr_r >= 100.0 and sobre_quienes:
-                        texto_encima = f"<br><b>Encima de:</b> {', '.join(sobre_quienes)}"
-                        celda_tabla_encima = ", ".join(sobre_quienes)
-                    
+                    # --- LÓGICA DE ANÁLISIS ---
                     if (25 <= vol_p <= 35) or (tr_r < 50): 
                         st_v = "🟢 Sano"
                     elif (tr_r >= 50) and (vol_p < 25): 
@@ -259,6 +253,7 @@ if st.session_state.get("authentication_status"):
                     else: 
                         st_v = "🟡 Atención"
                     
+                    # --- RENDERIZADO EN EL MAPA ---
                     folium.Circle(
                         [lat1, lon1], 
                         radius=rad1, 
@@ -266,9 +261,24 @@ if st.session_state.get("authentication_status"):
                         fill=True, 
                         fill_color=clrs[p1['R_ID']],
                         fill_opacity=0.3, 
-                        tooltip=f"Nombre: {p1['NOM']}<br>Volumen: {vol_p}<br>Traslape: {tr_r}%{texto_encima}"
+                        tooltip=f"Nombre: {p1['NOM']}<br>Volumen: {vol_p}<br>Traslape: {tr_r}%"
                     ).add_to(m)
                     
+                    if ver_n: 
+                        folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
+                    
+                    # --- UN SOLO REPORTE CON ESTRUCTURA LIMPIA ---
+                    rep_coords.append({
+                        "ST": st_v, 
+                        "ZONA": p1['NOM'], 
+                        "VOLUMEN": vol_p, 
+                        "TRANSLAPE REAL": f"{tr_r}%", 
+                        "TRANSLAPE ACUMULADO": f"{round(sum(ints), 1)}%"
+                    })
+                
+                if not df_v.empty: 
+                    m.fit_bounds([[df_v['LAT'].min(), df_v['LON'].min()], [df_v['LAT'].max(), df_v['LON'].max()]])
+    
                     if ver_n: 
                         folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
                     
