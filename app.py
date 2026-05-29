@@ -211,22 +211,75 @@ if st.session_state.get("authentication_status"):
             else: # Coordenadas
                 df_v = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)]
                 pts = df_v.to_dict('records')
+                
+                rep_coords = []
+                m_grado = 111139
+                
                 for i, p1 in enumerate(pts):
-                    otros = [p for j, p in enumerate(pts) if i != j]
-                    tr_sim, sobre_quienes = calcular_traslape_real(p1, otros)
-                    tr_r = round(tr_sim, 1)
-                    vol_p = int(p1['VOL'])
+                    lat1, lon1, rad1 = p1['LAT'], p1['LON'], p1['RAD']
                     
-                    # --- LÓGICA DE ANÁLISIS CORREGIDA ---
-                    if (25 <= vol_p <= 35) or (tr_r < 50):
-                        st_v = "🟢 Sano"
-                    elif (tr_r >= 50) and (vol_p < 25):
-                        st_v = "🔴 Crítico"
+                    # --- FILTRO GEOGRÁFICO NACIONAL DE ALTA VELOCIDAD ---
+                    margen_grados = (rad1 + 5000) / m_grado 
+                    
+                    otros = [
+                        p for j, p in enumerate(pts) 
+                        if i != j and 
+                        (lat1 - margen_grados <= p['LAT'] <= lat1 + margen_grados) and
+                        (lon1 - margen_grados <= p['LON'] <= lon1 + margen_grados)
+                    ]
+                    
+                    if not otros:
+                        tr_r = 0.0
+                        sobre_quienes = []
+                        ints = []
                     else:
-                        st_v = "🟡 Atención" # Para volúmenes > 35 con traslape > 50%
+                        tr_sim, sobre_quienes = calcular_traslape_real(p1, otros)
+                        tr_r = round(tr_sim, 1)
+                        
+                        ints = []
+                        cos_lat = np.cos(np.radians(lat1))
+                        for p2 in otros:
+                            dist = np.sqrt((lat1 - p2['LAT'])**2 + ((lon1 - p2['LON']) * cos_lat)**2) * m_grado
+                            if dist < (rad1 + p2['RAD']):
+                                area_int = area_interseccion(rad1, p2['RAD'], dist)
+                                ints.append(round((area_int / (np.pi * rad1**2)) * 100, 1))
                     
-                    ints = [round((area_interseccion(p1['RAD'], p2['RAD'], np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139)/(np.pi*p1['RAD']**2))*100,1) for p2 in otros if np.sqrt((p1['LAT']-p2['LAT'])**2 + ((p1['LON']-p2['LON'])*np.cos(np.radians(p1['LAT'])))**2)*111139 < (p1['RAD']+p2['RAD'])]
-                    folium.Circle([p1['LAT'], p1['LON']], radius=p1['RAD'], color=clrs[p1['R_ID']], fill=True, fill_opacity=0.3, tooltip=f"Nombre: {p1['NOM']}<br>Volumen: {int(p1['VOL'])}<br>Traslape: {tr_r}%").add_to(m)
+                    vol_p = int(p1['VOL'])
+                    texto_encima = ""
+                    celda_tabla_encima = "Ninguna (Sano / Traslape Parcial)"
+                    
+                    if tr_r >= 100.0 and sobre_quienes:
+                        texto_encima = f"<br><b>Encima de:</b> {', '.join(sobre_quienes)}"
+                        celda_tabla_encima = ", ".join(sobre_quienes)
+                    
+                    if (25 <= vol_p <= 35) or (tr_r < 50): 
+                        st_v = "🟢 Sano"
+                    elif (tr_r >= 50) and (vol_p < 25): 
+                        st_v = "🔴 Crítico"
+                    else: 
+                        st_v = "🟡 Atención"
+                    
+                    folium.Circle(
+                        [lat1, lon1], 
+                        radius=rad1, 
+                        color=clrs[p1['R_ID']], 
+                        fill=True, 
+                        fill_color=clrs[p1['R_ID']],
+                        fill_opacity=0.3, 
+                        tooltip=f"Nombre: {p1['NOM']}<br>Volumen: {vol_p}<br>Traslape: {tr_r}%{texto_encima}"
+                    ).add_to(m)
+                    
+                    if ver_n: 
+                        folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
+                    
+                    rep_coords.append({
+                        "ST": st_v, 
+                        "ZONA": p1['NOM'], 
+                        "VOLUMEN": vol_p, 
+                        "TRASLAPADO %": f"{tr_r}%", 
+                        "TRASLAPADO ACUMULADO %": f"{round(sum(ints), 1)}%",
+                        "ZONAS ENCIMA (100% TR)": celda_tabla_encima
+                    })
 
                     
                     if ver_n: 
