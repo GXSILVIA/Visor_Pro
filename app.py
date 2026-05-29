@@ -213,7 +213,8 @@ if st.session_state.get("authentication_status"):
                 pts = df_v.to_dict('records')
                 for i, p1 in enumerate(pts):
                     otros = [p for j, p in enumerate(pts) if i != j]
-                    tr_r = round(calcular_traslape_real(p1, otros), 1)
+                    tr_sim, sobre_quienes = calcular_traslape_real(p1, otros)
+                    tr_r = round(tr_sim, 1)
                     vol_p = int(p1['VOL'])
                     
                     # --- LÓGICA DE ANÁLISIS CORREGIDA ---
