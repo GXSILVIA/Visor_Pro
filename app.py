@@ -25,20 +25,42 @@ def area_interseccion(r1, r2, d):
     a = 0.5 * np.sqrt(max(0, (-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)))
     return float(p1 * phi1 + p2 * phi2 - a)
 
+# --- ESTA ES LA NUEVA FUNCIÓN QUE DEBES PEGAR ---
 def calcular_traslape_real(p1, otros_pts):
-    if not otros_pts: return 0.0
+    if not otros_pts: return 0.0, []
     n = 10000 # Precisión 10k
     ang = np.random.uniform(0, 2*np.pi, n)
     rad = np.sqrt(np.random.uniform(0, 1, n)) * p1['RAD']
     m_grado = 111139
     cos_lat = np.cos(np.radians(p1['LAT']))
+    
+    # Generar los 10,000 puntos de Monte Carlo para la zona p1
     p_lat = p1['LAT'] + ((rad * np.sin(ang)) / m_grado)
     p_lon = p1['LON'] + ((rad * np.cos(ang)) / (m_grado * cos_lat))
-    cubiertos = np.zeros(n, dtype=bool)
-    for p2 in otros_pts:
-        d2 = ((p_lat - p2['LAT'])**2 + ((p_lon - p2['LON']) * cos_lat)**2) * (m_grado**2)
-        cubiertos |= (d2 <= p2['RAD']**2)
-    return float((np.sum(cubiertos) / n) * 100)
+    
+    # Convertir los otros puntos en arreglos de NumPy para operarlos en paralelo
+    lats_otros = np.array([p['LAT'] for p in otros_pts])
+    lons_otros = np.array([p['LON'] for p in otros_pts])
+    rads_otros = np.array([p['RAD'] for p in otros_pts])
+    nombres_otros = np.array([p['NOM'] for p in otros_pts])
+    
+    # Matriz tridimensional implícita (10k puntos x M zonas vecinas)
+    p_lat_m = p_lat[:, np.newaxis]
+    p_lon_m = p_lon[:, np.newaxis]
+    
+    d2 = ((p_lat_m - lats_otros)**2 + ((p_lon_m - lons_otros) * cos_lat)**2) * (m_grado**2)
+    puntos_en_zonas = d2 <= rads_otros**2
+    
+    # 1. Calcular el porcentaje global de traslape
+    cubiertos = np.any(puntos_en_zonas, axis=1)
+    porcentaje = float((np.sum(cubiertos) / n) * 100)
+    
+    # 2. Identificar qué zonas específicas cubrieron al menos un punto
+    zonas_que_cubren = np.any(puntos_en_zonas, axis=0)
+    zonas_intersecadas = nombres_otros[zonas_que_cubren].tolist()
+    
+    return porcentaje, zonas_intersecadas
+
 
 def obtener_rango_id(v, modo_p):
     lim = [100, 200, 300, 400] if modo_p else [15, 20, 30, 40]
@@ -100,7 +122,9 @@ if st.session_state.get("authentication_status"):
                     pts = df_h.to_dict('records')
                     res = []
                     for k, p1 in enumerate(pts):
-                        tr = round(calcular_traslape_real(p1, [p for j, p in enumerate(pts) if k != j]), 1)
+                        tr_sim, _ = calcular_traslape_real(p1, [p for j, p in enumerate(pts) if k != j])
+                        tr = round(tr_sim, 1)
+
                         st_l, icon = ("Bajo", "🟢") if tr <= 25 else ("Medio", "🟡") if tr <= 50 else ("Alto", "🟠") if tr <= 75 else ("Crítico", "🔴")
                         res.append({"ST": f"{icon} {st_l}", "Zona": p1['NOM'], "Traslape": tr, "R_ID": p1['R_ID'], "LAT": p1['LAT'], "LON": p1['LON'], "RAD": p1['RAD'], "VOL": p1['VOL']})
                     st.session_state.analisis_cache[nombre] = res
