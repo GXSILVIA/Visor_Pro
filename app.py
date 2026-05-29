@@ -209,7 +209,7 @@ if st.session_state.get("authentication_status"):
                 m.fit_bounds(b_pol)
 
             else: # Coordenadas
-                           
+                     
                 df_v = st.session_state.df_datos[st.session_state.df_datos['R_ID'].isin(acts)]
                 pts = df_v.to_dict('records')
                 
@@ -234,6 +234,7 @@ if st.session_state.get("authentication_status"):
                         tr_r = 0.0
                         ints = []
                     else:
+                        # Ejecuta el Monte Carlo rápido vectorizado
                         tr_sim, _ = calcular_traslape_real(p1, otros)
                         tr_r = round(tr_sim, 1)
                         
@@ -267,7 +268,7 @@ if st.session_state.get("authentication_status"):
                     if ver_n: 
                         folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
                     
-                    # --- UN SOLO REPORTE CON ESTRUCTURA LIMPIA ---
+                    # --- UN SOLO REPORTE CON ESTRUCTURA LIMPIA (SIN DUPLICADOS) ---
                     rep_coords.append({
                         "ST": st_v, 
                         "ZONA": p1['NOM'], 
@@ -276,36 +277,13 @@ if st.session_state.get("authentication_status"):
                         "TRANSLAPE ACUMULADO": f"{round(sum(ints), 1)}%"
                     })
                 
-                if not df_v.empty: 
-                    m.fit_bounds([[df_v['LAT'].min(), df_v['LON'].min()], [df_v['LAT'].max(), df_v['LON'].max()]])
-    
-                    if ver_n: 
-                        folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
-                    
-                    rep_coords.append({
-                        "ST": st_v, 
-                        "ZONA": p1['NOM'], 
-                        "VOLUMEN": vol_p, 
-                        "TRASLAPADO %": f"{tr_r}%", 
-                        "TRASLAPADO ACUMULADO %": f"{round(sum(ints), 1)}%",
-                        "ZONAS ENCIMA (100% TR)": celda_tabla_encima
-                    })
-                    
-                    if ver_n: 
-                        folium.Marker([p1['LAT'], p1['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
-                    
-                    rep_coords.append({
-                        "ST": st_v, 
-                        "ZONA": p1['NOM'], 
-                        "VOLUMEN": vol_p, 
-                        "TRANSLAPE REAL": f"{tr_r}%", 
-                        "TRANSLAPE ACUMULADO": f"{round(sum(ints),1)}%"
-                    })
-                
+                # --- FIN DEL BUCLE FOR: ENCUADRE DE MAPA SEGURO ---
                 if not df_v.empty: 
                     m.fit_bounds([[df_v['LAT'].min(), df_v['LON'].min()], [df_v['LAT'].max(), df_v['LON'].max()]])
 
-            map_html = m.get_root().render(); components.html(map_html, height=450)
+            # --- FUERA DE TODO LO ANTERIOR: MUESTRA EL MAPA EN LA WEB ---
+            map_html = m.get_root().render()
+            components.html(map_html, height=450)
 
             # --- CÁLCULOS SIEMPRE DISPONIBLES PARA EXCEL Y DASHBOARD ---
             if modo == "Crecimiento":
