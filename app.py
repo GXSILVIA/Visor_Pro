@@ -102,7 +102,7 @@ if st.session_state.get("authentication_status"):
         st.subheader("📥 Plantillas")
         c_b = {"Coordenadas":["ZONA","LATITUD","LONGITUD","RADIO","VOLUMEN"], "Polígonos CP":["ZONA","CP","VOLUMEN"], "Crecimiento":["ZONA","LATITUD","LONGITUD","RADIO","VOLUMEN"]}
         buf_p = io.BytesIO()
-        pd.DataFrame(columns=c_b[modo]).to_excel(buf_p, index=False); st.download_button(f"Base {modo}", data=buf_p.getvalue(), file_name=f"plantilla_{modo.lower().replace(' ','_')}.xlsx", use_container_width=True)
+        pd.DataFrame(columns=c_b[modo]).to_excel(buf_p, index=False); st.download_button(f"Base {modo}", data=buf_p.getvalue(), file_name=f"plantilla_{modo.lower().replace(' ','_')}.xlsx", use_co[...]
 
         gdf_pol, col_cp_geo, b_pol = None, None, None
         if modo == "Polígonos CP":
@@ -140,7 +140,7 @@ if st.session_state.get("authentication_status"):
             if c2.button("Sig. ➡️") and st.session_state.idx_hoja < len(nh)-1: st.session_state.idx_hoja += 1
 
         st.write("---")
-        labs = ["⚪ R0", "🟡 R1-100", "🟠 R101-200", "🔴 R201-300", "🟣 R301-400", "🟤 R401+"] if "Polígonos" in modo else ["⚪ R0", "🟡 R1-15", "🟠 R16-20", "🔴 R21-30", "🟣 R31-40", "🟤 R41+"]
+        labs = ["⚪ R0", "🟡 R1-100", "🟠 R101-200", "🔴 R201-300", "🟣 R301-400", "🟤 R401+"] if "Polígonos" in modo else ["⚪ R0", "🟡 R1-15", "🟠 R16-20", "🔴 R21-30", "🟣[...]
         acts = [i for i, l in enumerate(labs) if st.checkbox(l, value=True, key=f"r{i}_{modo}")]
         ver_n = st.toggle("🏷️ Ver Nombres Fijos", key="persist_nombres")
         m_ana = st.toggle("🔍 Tabla de Análisis", key="persist_analisis")
@@ -149,8 +149,8 @@ if st.session_state.get("authentication_status"):
         hay_d = (modo == "Crecimiento" and st.session_state.dict_hojas) or (modo != "Crecimiento" and st.session_state.df_datos is not None)
         if not hay_d: st.info("👋 Por favor, procesa un archivo para visualizar.")
         else:
-            # 1. Se crea tu mapa base original con OpenStreetMap
-            m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="OpenStreetMap")
+            # 1. Se crea tu mapa base con CartoDB (sin problemas de CORS/Referer)
+            m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles="CartoDB positron")
 
             # 2. INYECTOR DIRECTO DE CSS EN LA CABECERA (Fuerza el contraste al 100%)
             from branca.element import Element
@@ -173,9 +173,9 @@ if st.session_state.get("authentication_status"):
                     fg = folium.FeatureGroup(name=nom_fg, show=(i_fg == st.session_state.idx_hoja))
                     data_fg = [r for r in st.session_state.analisis_cache[nom_fg] if r['R_ID'] in acts]
                     for p in data_fg:
-                        folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_color=clrs[p['R_ID']], fill_opacity=0.3, tooltip=f"Nombre: {p['Zona']}<br>Volumen: {int(p['VOL'])}<br>Traslape: {p['Traslape']}%").add_to(fg)
+                        folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_color=clrs[p['R_ID']], fill_opacity=0.3, tooltip=f"Nombre: {p['Zona']}<br>Volum[...]
 
-                        if ver_n: folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p["Zona"]}</div>')).add_to(fg)
+                        if ver_n: folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width[...]
                     fg.add_to(m)
                 folium.LayerControl(position='topright', collapsed=False).add_to(m)
                 df_c = st.session_state.dict_hojas[nh_all[st.session_state.idx_hoja]]
@@ -204,7 +204,7 @@ if st.session_state.get("authentication_status"):
                         
                         if ver_n:
                             c = r['geometry'].centroid
-                            folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).add_to(m)
+                            folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).a[...]
                 m.fit_bounds(b_pol)
 
             else: # Coordenadas
@@ -265,7 +265,7 @@ if st.session_state.get("authentication_status"):
                     ).add_to(m)
                     
                     if ver_n: 
-                        folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"]}</div>')).add_to(m)
+                        folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"[...]
                     
                     # --- UN SOLO REPORTE CON ESTRUCTURA LIMPIA (SIN DUPLICADOS) ---
                     rep_coords.append({
@@ -329,10 +329,10 @@ if st.session_state.get("authentication_status"):
                     st.markdown(f"""
                         <div style="display: flex; justify-content: space-around; background: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #444; text-align: center;">
                             <div><p style="color: #bbb; margin:0;">📊 Traslape Total</p><h2 style="margin:0;">{round(p_act,1)}%</h2>{delta_html}</div>
-                            <div style="border-left: 1px solid #444; padding-left: 20px;"><p style="color: #28a745; font-weight: bold; margin:0;">🟢 Bajo</p><h2 style="margin:0; color: #28a745;">{round(b/t_e*100,1)}%</h2><p style="color:#28a745; margin:0;">{b} VRs</p></div>
-                            <div><p style="color: #ffc107; font-weight: bold; margin:0;">🟡 Medio</p><h2 style="margin:0; color: #ffc107;">{round(m_v/t_e*100,1)}%</h2><p style="color:#ffc107; margin:0;">{m_v} VRs</p></div>
-                            <div><p style="color: #fd7e14; font-weight: bold; margin:0;">🟠 Alto</p><h2 style="margin:0; color: #fd7e14;">{round(a/t_e*100,1)}%</h2><p style="color:#fd7e14; margin:0;">{a} VRs</p></div>
-                            <div><p style="color: #dc3545; font-weight: bold; margin:0;">🔴 Crítico</p><h2 style="margin:0; color: #dc3545;">{round(c/t_e*100,1)}%</h2><p style="color:#dc3545; margin:0;">{c} VRs</p></div>
+                            <div style="border-left: 1px solid #444; padding-left: 20px;"><p style="color: #28a745; font-weight: bold; margin:0;">🟢 Bajo</p><h2 style="margin:0; color: #28a745;[...]
+                            <div><p style="color: #ffc107; font-weight: bold; margin:0;">🟡 Medio</p><h2 style="margin:0; color: #ffc107;">{round(m_v/t_e*100,1)}%</h2><p style="color:#ffc107; m[...]
+                            <div><p style="color: #fd7e14; font-weight: bold; margin:0;">🟠 Alto</p><h2 style="margin:0; color: #fd7e14;">{round(a/t_e*100,1)}%</h2><p style="color:#fd7e14; marg[...]
+                            <div><p style="color: #dc3545; font-weight: bold; margin:0;">🔴 Crítico</p><h2 style="margin:0; color: #dc3545;">{round(c/t_e*100,1)}%</h2><p style="color:#dc3545; [...]
                         </div><br>""", unsafe_allow_html=True)
                     
                     st.dataframe(df_ex[["ST", "Zona", "VOL", "Traslape"]].rename(columns={"Zona":"VR", "VOL":"VOLUMEN", "Traslape":"% TR"}), use_container_width=True, hide_index=True)
@@ -430,7 +430,7 @@ if st.session_state.get("authentication_status"):
 
                     # --- GRÁFICA 3: DILUCION DE VOLUMEN ---
                     g3 = wb.add_chart({'type': 'column'}); l3 = wb.add_chart({'type': 'line'})
-                    g3.add_series({'name': 'CARGA PROM', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$25:${lc}$25', 'fill': {'color': '#5B9BD5'}, 'data_labels': {'value': True}})
+                    g3.add_series({'name': 'CARGA PROM', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$25:${lc}$25', 'fill': {'color': '#5B9BD5'}, 'data_labels': {'value': True}[...]
                     l3.add_series({'name': 'Total VRs', 'values': f'=RESUMEN!$B$24:${lc}$24', 'line': {'color': '#C00000'}, 'data_labels': {'value': True}})
                     g3.combine(l3); g3.set_title({'name': 'DILUCION DE VOLUMEN VS VRS'}); ws.insert_chart('L28', g3, {'x_scale': 1.1})
 
@@ -440,14 +440,14 @@ if st.session_state.get("authentication_status"):
                         m_ant = list(st.session_state.dict_hojas.keys())[idx_m-1] if idx_m > 0 else None
                         df_p = {limpiar_texto_final(r['Zona']):r for r in st.session_state.analisis_cache[m_ant]} if m_ant else {}
                         ws_det = wb.add_worksheet(n_h[:31]); ws_det.hide_gridlines(2)
-                        ws_det.add_table(3,0,len(df_d)+3,4,{'columns':[{'header':'VR'},{'header':'VOLUMEN'},{'header':'Δ VOL'},{'header':'% TRASLAPE'},{'header':'Δ TRASLAPE'}],'style':'Table Style Medium 9'})
+                        ws_det.add_table(3,0,len(df_d)+3,4,{'columns':[{'header':'VR'},{'header':'VOLUMEN'},{'header':'Δ VOL'},{'header':'% TRASLAPE'},{'header':'Δ TRASLAPE'}],'style':'Table St[...]
                         for ri, r in df_d.iterrows():
                             re = ri+4; zl = limpiar_texto_final(r['Zona'])
                             ws_det.write(re, 0, r['Zona']); ws_det.write(re, 1, r['VOL'])
                             if zl in df_p:
                                 dv, dt = int(r['VOL']-df_p[zl]['VOL']), round(r['Traslape']-df_p[zl]['Traslape'], 1)
-                                ws_det.write(re, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#00B050' if dv>0 else '#FF0000' if dv<0 else '#808080','bold':True}))
-                                ws_det.write(re, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#FF0000' if dt>0 else '#00B050' if dt<0 else '#808080','bold':True}))
+                                ws_det.write(re, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#00B050' if dv>0 else '#FF0000' if d[...]
+                                ws_det.write(re, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#FF0000' if dt>0 else '#00B050' if dt<0[...]
                             else:
                                 ws_det.write(re, 2, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
                                 ws_det.write(re, 4, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
