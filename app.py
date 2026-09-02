@@ -150,7 +150,13 @@ if st.session_state.get("authentication_status"):
         if not hay_d: st.info("👋 Por favor, procesa un archivo para visualizar.")
         else:
             # 1. Se crea tu mapa base con CartoDB (sin problemas de CORS/Referer)
-            m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles='OpenStreetMap')
+            m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles=None)
+            folium.TileLayer(
+                tiles='https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                attr='© OpenStreetMap contributors, Tiles: HOT',
+                name='OSM Humanitarian',
+                no_wrap=True        
+            ).add_to(m)
             
             # 2. INYECTOR DIRECTO DE CSS EN LA CABECERA (Fuerza el contraste al 100%)
             from branca.element import Element
