@@ -151,6 +151,7 @@ if st.session_state.get("authentication_status"):
         else:
             # 1. Se crea tu mapa base con CartoDB (sin problemas de CORS/Referer)
             m = folium.Map(location=[19.4, -99.1], zoom_start=11, tiles=None) folium.TileLayer('Stamen Terrain', name='Stamen Terrain', attr='Map tiles by Stamen Design').add_to(m)
+            
             # 2. INYECTOR DIRECTO DE CSS EN LA CABECERA (Fuerza el contraste al 100%)
             from branca.element import Element
 
