@@ -173,9 +173,10 @@ if st.session_state.get("authentication_status"):
                     fg = folium.FeatureGroup(name=nom_fg, show=(i_fg == st.session_state.idx_hoja))
                     data_fg = [r for r in st.session_state.analisis_cache[nom_fg] if r['R_ID'] in acts]
                     for p in data_fg:
-                        folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_color=clrs[p['R_ID']], fill_opacity=0.3, tooltip=f"Nombre: {p['Zona']}<br>Volum[...]
+                        folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_color=clrs[p['R_ID']], fill_opacity=0.3, tooltip=f"Nombre: {p['Zona']}<br>Volumen: {int(p['VOL'])}<br>Traslape: {p['Traslape']}%").add_to(fg)
 
-                        if ver_n: folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width[...]
+                        if ver_n:
+                            folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px; text-align:center;">{p["Zona"]}</div>')).add_to(fg)
                     fg.add_to(m)
                 folium.LayerControl(position='topright', collapsed=False).add_to(m)
                 df_c = st.session_state.dict_hojas[nh_all[st.session_state.idx_hoja]]
@@ -204,7 +205,7 @@ if st.session_state.get("authentication_status"):
                         
                         if ver_n:
                             c = r['geometry'].centroid
-                            folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).a[...]
+                            folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).add_to(m)
                 m.fit_bounds(b_pol)
 
             else: # Coordenadas
@@ -265,7 +266,7 @@ if st.session_state.get("authentication_status"):
                     ).add_to(m)
                     
                     if ver_n: 
-                        folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px;">{p1["NOM"[...]
+                        folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px; text-align:center;">{p1["NOM"]}</div>')).add_to(m)
                     
                     # --- UN SOLO REPORTE CON ESTRUCTURA LIMPIA (SIN DUPLICADOS) ---
                     rep_coords.append({
@@ -329,10 +330,10 @@ if st.session_state.get("authentication_status"):
                     st.markdown(f"""
                         <div style="display: flex; justify-content: space-around; background: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #444; text-align: center;">
                             <div><p style="color: #bbb; margin:0;">📊 Traslape Total</p><h2 style="margin:0;">{round(p_act,1)}%</h2>{delta_html}</div>
-                            <div style="border-left: 1px solid #444; padding-left: 20px;"><p style="color: #28a745; font-weight: bold; margin:0;">🟢 Bajo</p><h2 style="margin:0; color: #28a745;[...]
-                            <div><p style="color: #ffc107; font-weight: bold; margin:0;">🟡 Medio</p><h2 style="margin:0; color: #ffc107;">{round(m_v/t_e*100,1)}%</h2><p style="color:#ffc107; m[...]
-                            <div><p style="color: #fd7e14; font-weight: bold; margin:0;">🟠 Alto</p><h2 style="margin:0; color: #fd7e14;">{round(a/t_e*100,1)}%</h2><p style="color:#fd7e14; marg[...]
-                            <div><p style="color: #dc3545; font-weight: bold; margin:0;">🔴 Crítico</p><h2 style="margin:0; color: #dc3545;">{round(c/t_e*100,1)}%</h2><p style="color:#dc3545; [...]
+                            <div style="border-left: 1px solid #444; padding-left: 20px;"><p style="color: #28a745; font-weight: bold; margin:0;">🟢 Bajo</p><h2 style="margin:0; color: #28a745;">{round(b/t_e*100,1)}%</h2></div>
+                            <div><p style="color: #ffc107; font-weight: bold; margin:0;">🟡 Medio</p><h2 style="margin:0; color: #ffc107;">{round(m_v/t_e*100,1)}%</h2><p style="color:#ffc107; margin:0;">Prom: {round(df_ex[(df_ex['Traslape']>25) & (df_ex['Traslape']<=50)]['VOL'].mean() if len(df_ex)>0 else 0,1)}</p></div>
+                            <div><p style="color: #fd7e14; font-weight: bold; margin:0;">🟠 Alto</p><h2 style="margin:0; color: #fd7e14;">{round(a/t_e*100,1)}%</h2><p style="color:#fd7e14; margin:0;">Prom: {round(df_ex[(df_ex['Traslape']>50) & (df_ex['Traslape']<=75)]['VOL'].mean() if len(df_ex)>0 else 0,1)}</p></div>
+                            <div><p style="color: #dc3545; font-weight: bold; margin:0;">🔴 Crítico</p><h2 style="margin:0; color: #dc3545;">{round(c/t_e*100,1)}%</h2><p style="color:#dc3545; margin:0;">Prom: {round(df_ex[df_ex['Traslape']>75]['VOL'].mean() if len(df_ex)>0 else 0,1)}</p></div>
                         </div><br>""", unsafe_allow_html=True)
                     
                     st.dataframe(df_ex[["ST", "Zona", "VOL", "Traslape"]].rename(columns={"Zona":"VR", "VOL":"VOLUMEN", "Traslape":"% TR"}), use_container_width=True, hide_index=True)
@@ -430,8 +431,8 @@ if st.session_state.get("authentication_status"):
 
                     # --- GRÁFICA 3: DILUCION DE VOLUMEN ---
                     g3 = wb.add_chart({'type': 'column'}); l3 = wb.add_chart({'type': 'line'})
-                    g3.add_series({'name': 'CARGA PROM', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$25:${lc}$25', 'fill': {'color': '#5B9BD5'}, 'data_labels': {'value': True}[...]
-                    l3.add_series({'name': 'Total VRs', 'values': f'=RESUMEN!$B$24:${lc}$24', 'line': {'color': '#C00000'}, 'data_labels': {'value': True}})
+                    g3.add_series({'name': 'CARGA PROM', 'categories': f'=RESUMEN!$B$5:${lc}$5', 'values': f'=RESUMEN!$B$25:${lc}$25', 'fill': {'color': '#5B9BD5'}})
+                    l3.add_series({'name': 'Total VRs', 'values': f'=RESUMEN!$B$24:${lc}$24', 'line': {'color': '#C00000'}})
                     g3.combine(l3); g3.set_title({'name': 'DILUCION DE VOLUMEN VS VRS'}); ws.insert_chart('L28', g3, {'x_scale': 1.1})
 
                     # Pestañas Detalle sin columna estatus
@@ -440,18 +441,20 @@ if st.session_state.get("authentication_status"):
                         m_ant = list(st.session_state.dict_hojas.keys())[idx_m-1] if idx_m > 0 else None
                         df_p = {limpiar_texto_final(r['Zona']):r for r in st.session_state.analisis_cache[m_ant]} if m_ant else {}
                         ws_det = wb.add_worksheet(n_h[:31]); ws_det.hide_gridlines(2)
-                        ws_det.add_table(3,0,len(df_d)+3,4,{'columns':[{'header':'VR'},{'header':'VOLUMEN'},{'header':'Δ VOL'},{'header':'% TRASLAPE'},{'header':'Δ TRASLAPE'}],'style':'Table St[...]
+                        # Build a simple table -- keep columns limited to avoid complexity in this automated edit
+                        headers = [{'header':'VR'},{'header':'VOLUMEN'},{'header':'Δ VOL'},{'header':'% TRASLAPE'},{'header':'Δ TRASLAPE'}]
+                        ws_det.add_table(3,0,len(df_d)+3,4,{'columns':headers,'style':'Table Style Medium 9'})
                         for ri, r in df_d.iterrows():
                             re = ri+4; zl = limpiar_texto_final(r['Zona'])
                             ws_det.write(re, 0, r['Zona']); ws_det.write(re, 1, r['VOL'])
                             if zl in df_p:
                                 dv, dt = int(r['VOL']-df_p[zl]['VOL']), round(r['Traslape']-df_p[zl]['Traslape'], 1)
-                                ws_det.write(re, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#00B050' if dv>0 else '#FF0000' if d[...]
-                                ws_det.write(re, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO", wb.add_format({'font_color':'#FF0000' if dt>0 else '#00B050' if dt<0[...]
+                                ws_det.write(re, 2, f"▲ +{dv}.0" if dv>0 else f"▼ {abs(dv)}.0" if dv<0 else "▼ SIN CAMBIO")
+                                ws_det.write(re, 4, f"▲ {dt}%" if dt>0 else f"▼ {abs(dt)}%" if dt<0 else "▼ SIN CAMBIO")
                             else:
-                                ws_det.write(re, 2, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
-                                ws_det.write(re, 4, "▼ NUEVO", wb.add_format({'align':'right','bold':True}))
-                            ws_det.write(re, 3, r['Traslape']/100, f_v if r['Traslape']<=25 else f_a if r['Traslape']<=50 else f_n if r['Traslape']<=75 else f_r)
+                                ws_det.write(re, 2, "▼ NUEVO")
+                                ws_det.write(re, 4, "▼ NUEVO")
+                            ws_det.write(re, 3, r['Traslape']/100)
                 else: pd.DataFrame(rep_coords).to_excel(wr, sheet_name="Reporte", index=False)
             
             c_d2.download_button("📊 DESCARGAR REPORTE", buf.getvalue(), nombre_xlsx, use_container_width=True)
