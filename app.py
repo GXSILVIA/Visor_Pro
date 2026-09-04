@@ -1,4 +1,4 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # Copyright 2026 Silvia Guadalupe Garcia Espinosa - Sistema Pro AMZL v8.5 Final Verified
 
 import streamlit as st
@@ -11,6 +11,7 @@ import streamlit_authenticator as stauth
 import streamlit.components.v1 as components
 import xlsxwriter 
 import altair as alt
+from folium.plugins import HeatMap
 
 # --- 1. CONFIGURACIÓN Y CÁLCULOS ---
 st.set_page_config(page_title="Sistema Pro AMZL", layout="wide")
@@ -166,6 +167,11 @@ if st.session_state.get("authentication_status"):
         ver_n = st.toggle("🏷️ Ver Nombres Fijos", key="persist_nombres")
         m_ana = st.toggle("🔍 Tabla de Análisis", key="persist_analisis")
 
+        # ═══════════════════════════════════════════════════════════════
+        # 🔥 TOGGLE DE MAPA DE CALOR (en el panel, junto a los otros toggles)
+        # ═══════════════════════════════════════════════════════════════
+        ver_heatmap = st.toggle("🔥 Mapa de Calor por Volumen", key="persist_heatmap")
+
     with col_m:
         hay_d = (modo == "Crecimiento" and st.session_state.dict_hojas) or (modo != "Crecimiento" and st.session_state.df_datos is not None)
         if not hay_d: st.info("👋 Por favor, procesa un archivo para visualizar.")
@@ -194,6 +200,11 @@ if st.session_state.get("authentication_status"):
 
             clrs = {0:"#FFF", 1:"#FF0", 2:"#FFA500", 3:"#F00", 4:"#B7094C", 5:"#800000"}; rep_coords = []
 
+            # ═══════════════════════════════════════════════════════════════
+            # 🔥 VARIABLE PARA ACUMULAR DATOS DEL HEATMAP
+            # ═══════════════════════════════════════════════════════════════
+            heatmap_data = []
+
             if modo == "Crecimiento":
                 nh_all = list(st.session_state.dict_hojas.keys())
                 for i_fg, nom_fg in enumerate(nh_all):
@@ -204,6 +215,10 @@ if st.session_state.get("authentication_status"):
 
                         if ver_n:
                             folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px; text-align:center;">{p["Zona"]}</div>')).add_to(fg)
+                        
+                        # Acumular datos para heatmap (solo hoja activa)
+                        if i_fg == st.session_state.idx_hoja:
+                            heatmap_data.append([p['LAT'], p['LON'], p['VOL']])
                     fg.add_to(m)
                 folium.LayerControl(position='topright', collapsed=False).add_to(m)
                 df_c = st.session_state.dict_hojas[nh_all[st.session_state.idx_hoja]]
@@ -228,6 +243,10 @@ if st.session_state.get("authentication_status"):
                             },
                             tooltip=f"Zona: {n_p} | Vol: {int(v_p)}"
                         ).add_to(m)
+                        
+                        # Acumular datos para heatmap usando centroide del polígono
+                        centroid = r['geometry'].centroid
+                        heatmap_data.append([centroid.y, centroid.x, v_p])
                         
                         if ver_n:
                             c = r['geometry'].centroid
@@ -295,6 +314,9 @@ if st.session_state.get("authentication_status"):
                         fill_opacity=0.3, 
                         tooltip=folium.Tooltip(tooltip_html)
                     ).add_to(m)
+
+                    # Acumular datos para heatmap
+                    heatmap_data.append([lat1, lon1, vol_p])
                     
                     if ver_n: 
                         folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px; text-align:center;">{p1["NOM"]}</div>')).add_to(m)
@@ -317,6 +339,30 @@ if st.session_state.get("authentication_status"):
                 # --- FIN DEL BUCLE FOR: ENCUADRE DE MAPA SEGURO ---
                 if not df_v.empty: 
                     m.fit_bounds([[df_v['LAT'].min(), df_v['LON'].min()], [df_v['LAT'].max(), df_v['LON'].max()]])
+
+            # ═══════════════════════════════════════════════════════════════
+            # 🔥 CAPA DE MAPA DE CALOR POR VOLUMEN
+            # Se añade como última capa (encima de todo) solo si está activado
+            # ═══════════════════════════════════════════════════════════════
+            if ver_heatmap and heatmap_data:
+                # Normalizar los pesos del volumen para que el gradiente sea relativo
+                max_vol = max(row[2] for row in heatmap_data) if heatmap_data else 1
+                heatmap_normalizado = [[row[0], row[1], row[2] / max_vol] for row in heatmap_data]
+                
+                HeatMap(
+                    heatmap_normalizado,
+                    min_opacity=0.3,
+                    max_val=1.0,
+                    radius=25,
+                    blur=15,
+                    gradient={
+                        0.2: '#2b83ba',   # Azul — volumen bajo
+                        0.4: '#abdda4',   # Verde claro
+                        0.6: '#ffffbf',   # Amarillo
+                        0.8: '#fdae61',   # Naranja
+                        1.0: '#d7191c'    # Rojo — volumen alto
+                    }
+                ).add_to(m)
 
             # --- FUERA DE TODO LO ANTERIOR: MUESTRA EL MAPA EN LA WEB ---
             map_html = m.get_root().render()
