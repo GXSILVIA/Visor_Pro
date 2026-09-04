@@ -25,9 +25,16 @@ def area_interseccion(r1, r2, d):
     a = 0.5 * np.sqrt(max(0, (-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)))
     return float(p1 * phi1 + p2 * phi2 - a)
 
-# --- ESTA ES LA NUEVA FUNCIÓN QUE DEBES PEGAR ---
+# --- FUNCIÓN MODIFICADA: AHORA DEVUELVE DESGLOSE POR ZONA ---
 def calcular_traslape_real(p1, otros_pts):
-    if not otros_pts: return 0.0, []
+    """
+    Retorna:
+      - porcentaje_global: % total de traslape de p1 con todos los vecinos
+      - zonas_intersecadas: lista de nombres de zonas que cubren al menos 1 punto
+      - desglose: lista de dicts {'NOM': nombre, 'PCT': porcentaje} con el traslape
+                  individual de p1 contra cada vecino
+    """
+    if not otros_pts: return 0.0, [], []
     n = 10000 # Precisión 10k
     ang = np.random.uniform(0, 2*np.pi, n)
     rad = np.sqrt(np.random.uniform(0, 1, n)) * p1['RAD']
@@ -59,7 +66,21 @@ def calcular_traslape_real(p1, otros_pts):
     zonas_que_cubren = np.any(puntos_en_zonas, axis=0)
     zonas_intersecadas = nombres_otros[zonas_que_cubren].tolist()
     
-    return porcentaje, zonas_intersecadas
+    # 3. NUEVO: Desglose individual por zona vecina
+    desglose = []
+    conteo_por_zona = np.sum(puntos_en_zonas, axis=0)  # cuántos puntos cubre cada zona
+    for idx_z in range(len(otros_pts)):
+        if conteo_por_zona[idx_z] > 0:
+            pct_individual = float((conteo_por_zona[idx_z] / n) * 100)
+            desglose.append({
+                'NOM': nombres_otros[idx_z],
+                'PCT': round(pct_individual, 1)
+            })
+    
+    # Ordenar de mayor a menor traslape
+    desglose.sort(key=lambda x: x['PCT'], reverse=True)
+    
+    return porcentaje, zonas_intersecadas, desglose
 
 
 def obtener_rango_id(v, modo_p):
@@ -122,11 +143,11 @@ if st.session_state.get("authentication_status"):
                     pts = df_h.to_dict('records')
                     res = []
                     for k, p1 in enumerate(pts):
-                        tr_sim, _ = calcular_traslape_real(p1, [p for j, p in enumerate(pts) if k != j])
+                        tr_sim, _, desglose = calcular_traslape_real(p1, [p for j, p in enumerate(pts) if k != j])
                         tr = round(tr_sim, 1)
 
                         st_l, icon = ("Bajo", "🟢") if tr <= 25 else ("Medio", "🟡") if tr <= 50 else ("Alto", "🟠") if tr <= 75 else ("Crítico", "🔴")
-                        res.append({"ST": f"{icon} {st_l}", "Zona": p1['NOM'], "Traslape": tr, "R_ID": p1['R_ID'], "LAT": p1['LAT'], "LON": p1['LON'], "RAD": p1['RAD'], "VOL": p1['VOL']})
+                        res.append({"ST": f"{icon} {st_l}", "Zona": p1['NOM'], "Traslape": tr, "R_ID": p1['R_ID'], "LAT": p1['LAT'], "LON": p1['LON'], "RAD": p1['RAD'], "VOL": p1['VOL'], "DESGLOSE": desglose})
                     st.session_state.analisis_cache[nombre] = res
                     st.session_state.historico_resumen.append({"Mes": nombre, "Zonas": len(df_h), "Prom": float(np.mean([r['Traslape'] for r in res])), "idx": i})
                 st.session_state.idx_hoja = 0
@@ -197,7 +218,6 @@ if st.session_state.get("authentication_status"):
                         v_p = row['VOL'] if isinstance(row, pd.Series) else row.iloc[0]['VOL']
                         n_p = row['NOM'] if isinstance(row, pd.Series) else row.iloc[0]['NOM']
                         
-                        # --- MODIFICACIÓN: SE AGREGA TOOLTIP ---
                         folium.GeoJson(
                             r['geometry'], 
                             style_function=lambda x, v=v_p: {
@@ -238,19 +258,11 @@ if st.session_state.get("authentication_status"):
                     
                     if not otros:
                         tr_r = 0.0
-                        ints = []
+                        desglose = []
                     else:
                         # Ejecuta el Monte Carlo rápido vectorizado
-                        tr_sim, _ = calcular_traslape_real(p1, otros)
+                        tr_sim, _, desglose = calcular_traslape_real(p1, otros)
                         tr_r = round(tr_sim, 1)
-                        
-                        ints = []
-                        cos_lat = np.cos(np.radians(lat1))
-                        for p2 in otros:
-                            dist = np.sqrt((lat1 - p2['LAT'])**2 + ((lon1 - p2['LON']) * cos_lat)**2) * m_grado
-                            if dist < (rad1 + p2['RAD']):
-                                area_int = area_interseccion(rad1, p2['RAD'], dist)
-                                ints.append(round((area_int / (np.pi * rad1**2)) * 100, 1))
                     
                     # --- LÓGICA DE ANÁLISIS ---
                     if (25 <= vol_p <= 35) or (tr_r < 50): 
@@ -260,6 +272,19 @@ if st.session_state.get("authentication_status"):
                     else: 
                         st_v = "🟡 Atención"
                     
+                    # --- CONSTRUIR TOOLTIP CON DESGLOSE POR VR ---
+                    tooltip_lines = [
+                        f"<b>Nombre:</b> {p1['NOM']}",
+                        f"<b>Volumen:</b> {vol_p}",
+                        f"<b>Traslape Total:</b> {tr_r}%"
+                    ]
+                    if desglose:
+                        tooltip_lines.append("<br><b>── Detalle Traslape ──</b>")
+                        for d in desglose:
+                            tooltip_lines.append(f"&nbsp;&nbsp;• {d['NOM']}: {d['PCT']}%")
+                    
+                    tooltip_html = "<br>".join(tooltip_lines)
+                    
                     # --- RENDERIZADO EN EL MAPA ---
                     folium.Circle(
                         [lat1, lon1], 
@@ -268,19 +293,25 @@ if st.session_state.get("authentication_status"):
                         fill=True, 
                         fill_color=clrs[p1['R_ID']],
                         fill_opacity=0.3, 
-                        tooltip=f"Nombre: {p1['NOM']}<br>Volumen: {vol_p}<br>Traslape: {tr_r}%"
+                        tooltip=folium.Tooltip(tooltip_html)
                     ).add_to(m)
                     
                     if ver_n: 
                         folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px; text-align:center;">{p1["NOM"]}</div>')).add_to(m)
                     
-                    # --- UN SOLO REPORTE CON ESTRUCTURA LIMPIA (SIN DUPLICADOS) ---
+                    # --- CONSTRUIR TEXTO DE DESGLOSE PARA LA TABLA ---
+                    if desglose:
+                        txt_desglose = " | ".join([f"{d['NOM']} ({d['PCT']}%)" for d in desglose])
+                    else:
+                        txt_desglose = "Sin traslape"
+                    
+                    # --- REPORTE CON DESGLOSE ---
                     rep_coords.append({
                         "ST": st_v, 
                         "ZONA": p1['NOM'], 
                         "VOLUMEN": vol_p, 
-                        "TRANSLAPE REAL": f"{tr_r}%", 
-                        "TRANSLAPE ACUMULADO": f"{round(sum(ints), 1)}%"
+                        "TRASLAPE REAL": f"{tr_r}%", 
+                        "VRs TRASLAPADOS": txt_desglose
                     })
                 
                 # --- FIN DEL BUCLE FOR: ENCUADRE DE MAPA SEGURO ---
