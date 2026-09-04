@@ -163,8 +163,15 @@ if st.session_state.get("authentication_status"):
 
         st.write("---")
         labs = ["⚪ R0", "🟡 R1-100", "🟠 R101-200", "🔴 R201-300", "🟣 R301-400", "🟤 R401+"] if "Polígonos" in modo else ["⚪ R0", "🟡 R1-15", "🟠 R16-20", "🔴 R21-30", "🟣 R31-40", "🟤 R41+"]
-        # Los filtros de rango se muestran debajo del mapa; aquí leemos el estado guardado
-        acts = st.session_state.get('filtro_rangos_acts', list(range(len(labs))))
+        # Filtros de rango: checkboxes directos en el panel (valor en tiempo real)
+        acts = []
+        fcols = st.columns(3)
+        for idx_f, lab in enumerate(labs):
+            with fcols[idx_f % 3]:
+                if st.checkbox(lab, value=True, key=f"r{idx_f}_{modo}"):
+                    acts.append(idx_f)
+        st.session_state['filtro_rangos_acts'] = acts
+
         ver_n = st.toggle("🏷️ Ver Nombres Fijos", key="persist_nombres")
         m_ana = st.toggle("🔍 Tabla de Análisis", key="persist_analisis")
 
@@ -373,19 +380,6 @@ if st.session_state.get("authentication_status"):
             # --- FUERA DE TODO LO ANTERIOR: MUESTRA EL MAPA EN LA WEB ---
             map_html = m.get_root().render()
             components.html(map_html, height=450)
-
-            # ═══════════════════════════════════════════════════════════════
-            # 🎛️ FILTROS DE RANGO — pegados justo debajo del mapa
-            # ═══════════════════════════════════════════════════════════════
-            st.markdown("**🎛️ Filtros de Rango**")
-            n_cols = 3
-            filter_cols = st.columns(len(labs))
-            new_acts = []
-            for idx_f, lab in enumerate(labs):
-                with filter_cols[idx_f]:
-                    if st.checkbox(lab, value=(idx_f in acts), key=f"r{idx_f}_{modo}"):
-                        new_acts.append(idx_f)
-            st.session_state['filtro_rangos_acts'] = new_acts
 
             # --- CÁLCULOS PARA EXCEL Y DASHBOARD ---
             if modo == "Crecimiento":
