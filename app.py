@@ -163,7 +163,8 @@ if st.session_state.get("authentication_status"):
 
         st.write("---")
         labs = ["⚪ R0", "🟡 R1-100", "🟠 R101-200", "🔴 R201-300", "🟣 R301-400", "🟤 R401+"] if "Polígonos" in modo else ["⚪ R0", "🟡 R1-15", "🟠 R16-20", "🔴 R21-30", "🟣 R31-40", "🟤 R41+"]
-        acts = [i for i, l in enumerate(labs) if st.checkbox(l, value=True, key=f"r{i}_{modo}")]
+        # Los filtros de rango se muestran debajo del mapa; aquí leemos el estado guardado
+        acts = st.session_state.get('filtro_rangos_acts', list(range(len(labs))))
         ver_n = st.toggle("🏷️ Ver Nombres Fijos", key="persist_nombres")
         m_ana = st.toggle("🔍 Tabla de Análisis", key="persist_analisis")
 
@@ -347,20 +348,22 @@ if st.session_state.get("authentication_status"):
             if ver_heatmap and heatmap_data:
                 # Normalizar los pesos del volumen para que el gradiente sea relativo
                 max_vol = max(row[2] for row in heatmap_data) if heatmap_data else 1
-                heatmap_normalizado = [[row[0], row[1], row[2] / max_vol] for row in heatmap_data]
+                heatmap_normalizado = [[row[0], row[1], max(0.15, row[2] / max_vol)] for row in heatmap_data]
                 
                 HeatMap(
                     heatmap_normalizado,
-                    min_opacity=0.3,
+                    min_opacity=0.4,
+                    max_zoom=18,
+                    radius=40,
+                    blur=25,
                     max_val=1.0,
-                    radius=25,
-                    blur=15,
                     gradient={
-                        0.2: '#2b83ba',   # Azul — volumen bajo
-                        0.4: '#abdda4',   # Verde claro
-                        0.6: '#ffffbf',   # Amarillo
-                        0.8: '#fdae61',   # Naranja
-                        1.0: '#d7191c'    # Rojo — volumen alto
+                        0.0: '#0000ff',   # Azul intenso — volumen mínimo
+                        0.25: '#00ffff',  # Cian
+                        0.5: '#00ff00',   # Verde — volumen medio
+                        0.75: '#ffff00',  # Amarillo
+                        0.9: '#ff8000',   # Naranja — volumen alto
+                        1.0: '#ff0000'    # Rojo intenso — volumen máximo
                     }
                 ).add_to(m)
 
@@ -368,7 +371,20 @@ if st.session_state.get("authentication_status"):
             map_html = m.get_root().render()
             components.html(map_html, height=450)
 
-            # --- CÁLCULOS SIEMPRE DISPONIBLES PARA EXCEL Y DASHBOARD ---
+            # ═══════════════════════════════════════════════════════════════
+            # 🎛️ FILTROS DE RANGO — pegados justo debajo del mapa
+            # ═══════════════════════════════════════════════════════════════
+            st.markdown("**🎛️ Filtros de Rango**")
+            n_cols = 3
+            filter_cols = st.columns(len(labs))
+            new_acts = []
+            for idx_f, lab in enumerate(labs):
+                with filter_cols[idx_f]:
+                    if st.checkbox(lab, value=(idx_f in acts), key=f"r{idx_f}_{modo}"):
+                        new_acts.append(idx_f)
+            st.session_state['filtro_rangos_acts'] = new_acts
+
+            # --- CÁLCULOS PARA EXCEL Y DASHBOARD ---
             if modo == "Crecimiento":
                 hoja_act = nh_all[st.session_state.idx_hoja]
                 df_ex = pd.DataFrame(st.session_state.analisis_cache[hoja_act])
@@ -428,6 +444,8 @@ if st.session_state.get("authentication_status"):
         # --- SECCIÓN DE DESCARGAS: VERSIÓN "SOLO BOTONES" (SIN MAPA DUPLICADO) ---
         if 'm' in locals():
             st.write("---")
+            c_d1, c_d2 = st.columns(2)
+            c_d1.download_button("🗺️ Descargar Mapa HTML", map_html, f"mapa_{modo.lower()}.html", use_container_width=True)
             
             # 1. FUNCIÓN DE LIMPIEZA
             def limpiar_texto_final(t):
@@ -436,13 +454,7 @@ if st.session_state.get("authentication_status"):
                 t = unicodedata.normalize('NFKD', t).encode('ASCII', 'ignore').decode('ASCII')
                 return t.strip().upper()
 
-            # 2. PREPARACIÓN DE DATOS PARA BOTONES
-            map_data_final = m.get_root().render()
             from datetime import datetime
-            c_d1, c_d2 = st.columns(2)
-            
-            # Botón para descargar el mapa (No lo visualiza, solo lo descarga)
-            c_d1.download_button("🗺️ Descargar Mapa HTML", map_data_final, f"mapa_{modo.lower()}.html", use_container_width=True)
 
             nombre_xlsx = f"REPORTE_ESTRATEGICO_{datetime.now().strftime('%d_%m_%Y')}.xlsx"
             buf = io.BytesIO()
