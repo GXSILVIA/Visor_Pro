@@ -212,10 +212,11 @@ if st.session_state.get("authentication_status"):
                     fg = folium.FeatureGroup(name=nom_fg, show=(i_fg == st.session_state.idx_hoja))
                     data_fg = [r for r in st.session_state.analisis_cache[nom_fg] if r['R_ID'] in acts]
                     for p in data_fg:
-                        folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_color=clrs[p['R_ID']], fill_opacity=0.3, tooltip=f"Nombre: {p['Zona']}<br>Volumen: {int(p['VOL'])}<br>Traslape: {p['Traslape']}%").add_to(fg)
+                        if not ver_heatmap:
+                            folium.Circle([p['LAT'], p['LON']], radius=p['RAD'], color=clrs[p['R_ID']], fill=True, fill_color=clrs[p['R_ID']], fill_opacity=0.3, tooltip=f"Nombre: {p['Zona']}<br>Volumen: {int(p['VOL'])}<br>Traslape: {p['Traslape']}%").add_to(fg)
 
-                        if ver_n:
-                            folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px; text-align:center;">{p["Zona"]}</div>')).add_to(fg)
+                            if ver_n:
+                                folium.Marker([p['LAT'], p['LON']], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px; text-align:center;">{p["Zona"]}</div>')).add_to(fg)
                         
                         # Acumular datos para heatmap (solo hoja activa)
                         if i_fg == st.session_state.idx_hoja:
@@ -234,22 +235,23 @@ if st.session_state.get("authentication_status"):
                         v_p = row['VOL'] if isinstance(row, pd.Series) else row.iloc[0]['VOL']
                         n_p = row['NOM'] if isinstance(row, pd.Series) else row.iloc[0]['NOM']
                         
-                        folium.GeoJson(
-                            r['geometry'], 
-                            style_function=lambda x, v=v_p: {
-                                'fillColor':clrs[obtener_rango_id(v,True)], 
-                                'color':'#000', 
-                                'weight':1, 
-                                'fillOpacity':0.4
-                            },
-                            tooltip=f"Zona: {n_p} | Vol: {int(v_p)}"
-                        ).add_to(m)
+                        if not ver_heatmap:
+                            folium.GeoJson(
+                                r['geometry'], 
+                                style_function=lambda x, v=v_p: {
+                                    'fillColor':clrs[obtener_rango_id(v,True)], 
+                                    'color':'#000', 
+                                    'weight':1, 
+                                    'fillOpacity':0.4
+                                },
+                                tooltip=f"Zona: {n_p} | Vol: {int(v_p)}"
+                            ).add_to(m)
                         
                         # Acumular datos para heatmap usando centroide del polígono
                         centroid = r['geometry'].centroid
                         heatmap_data.append([centroid.y, centroid.x, v_p])
                         
-                        if ver_n:
+                        if ver_n and not ver_heatmap:
                             c = r['geometry'].centroid
                             folium.Marker([c.y, c.x], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-align:center; width:80px;">{n_p}</div>')).add_to(m)
                 m.fit_bounds(b_pol)
@@ -306,20 +308,21 @@ if st.session_state.get("authentication_status"):
                     tooltip_html = "<br>".join(tooltip_lines)
                     
                     # --- RENDERIZADO EN EL MAPA ---
-                    folium.Circle(
-                        [lat1, lon1], 
-                        radius=rad1, 
-                        color=clrs[p1['R_ID']], 
-                        fill=True, 
-                        fill_color=clrs[p1['R_ID']],
-                        fill_opacity=0.3, 
-                        tooltip=folium.Tooltip(tooltip_html)
-                    ).add_to(m)
+                    if not ver_heatmap:
+                        folium.Circle(
+                            [lat1, lon1], 
+                            radius=rad1, 
+                            color=clrs[p1['R_ID']], 
+                            fill=True, 
+                            fill_color=clrs[p1['R_ID']],
+                            fill_opacity=0.3, 
+                            tooltip=folium.Tooltip(tooltip_html)
+                        ).add_to(m)
 
                     # Acumular datos para heatmap
                     heatmap_data.append([lat1, lon1, vol_p])
                     
-                    if ver_n: 
+                    if ver_n and not ver_heatmap: 
                         folium.Marker([lat1, lon1], icon=folium.features.DivIcon(html=f'<div style="font-size:8pt; font-weight:bold; color:#000; text-shadow: 0 0 1px #FFF; width:100px; text-align:center;">{p1["NOM"]}</div>')).add_to(m)
                     
                     # --- CONSTRUIR TEXTO DE DESGLOSE PARA LA TABLA ---
